@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SKIN VAULT — CS2 Inventory Tracker</title>
+  <title>SKINVANGUARDA — Standoff 2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -24,8 +24,8 @@
             <line x1="10" y1="40" x2="50" y2="40" stroke="currentColor" stroke-width="1" opacity="0.5"/>
           </svg>
         </div>
-        <h1 class="logo-text">SKIN<span>VAULT</span></h1>
-        <p class="logo-sub">CS2 INVENTORY TRACKER</p>
+        <h1 class="logo-text">SKIN<span>VANGUARDA</span></h1>
+        <p class="logo-sub">STANDOFF 2</p>
       </div>
 
       <div class="auth-card">
@@ -34,7 +34,6 @@
           <button class="auth-tab" data-tab="register">REGISTRAR</button>
         </div>
 
-        <!-- Login Form -->
         <form id="login-form" class="auth-form active">
           <div class="form-group">
             <label>Email</label>
@@ -48,15 +47,22 @@
           <div id="login-error" class="form-error"></div>
         </form>
 
-        <!-- Register Form -->
         <form id="register-form" class="auth-form">
           <div class="form-group">
-            <label>Nome de Exibição</label>
+            <label>Nome de Exibição (Nickname)</label>
             <input type="text" id="register-name" placeholder="Seu nickname" required minlength="3" maxlength="20">
           </div>
           <div class="form-group">
             <label>Email</label>
             <input type="email" id="register-email" placeholder="seu@email.com" required>
+          </div>
+          <div class="form-group">
+            <label>Telefone</label>
+            <input type="tel" id="register-phone" placeholder="(11) 99999-9999" required>
+          </div>
+          <div class="form-group">
+            <label>ID do Jogo (Standoff 2)</label>
+            <input type="text" id="register-gameid" placeholder="Seu ID no Standoff 2" required>
           </div>
           <div class="form-group">
             <label>Senha</label>
@@ -73,36 +79,61 @@
     </div>
   </div>
 
+  <!-- PENDING APPROVAL SCREEN -->
+  <div id="pending-screen" class="screen">
+    <div class="auth-bg-grid"></div>
+    <div class="pending-container">
+      <div class="pending-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <h2 class="pending-title">CONTA PENDENTE DE APROVAÇÃO</h2>
+      <p class="pending-text">Sua conta foi criada e está aguardando aprovação de um administrador.</p>
+      <p class="pending-subtext">Você receberá acesso assim que sua conta for aprovada.</p>
+      <button class="btn btn-ghost" id="btn-pending-logout">SAIR</button>
+    </div>
+  </div>
+
   <!-- MAIN APP -->
   <div id="app-screen" class="screen">
     <!-- HEADER -->
     <header class="app-header">
       <div class="header-left">
         <div class="header-logo">
-          <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+          <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" width="28" height="28">
             <rect x="5" y="15" width="50" height="30" rx="3" stroke="currentColor" stroke-width="2"/>
             <rect x="15" y="22" width="20" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
             <circle cx="45" cy="30" r="4" stroke="currentColor" stroke-width="1.5"/>
           </svg>
-          <span class="header-title">SKINVAULT</span>
+          <span class="header-title">SKINVANGUARDA</span>
         </div>
       </div>
       <nav class="header-nav">
         <button class="nav-btn active" data-view="inventory">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          MEU INVENTÁRIO
+          <span>INVENTÁRIO</span>
         </button>
         <button class="nav-btn" data-view="players">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          JOGADORES
+          <span>JOGADORES</span>
         </button>
         <button class="nav-btn" data-view="ranking">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-          RANKING
+          <span>RANKING</span>
+        </button>
+        <button class="nav-btn" data-view="raffle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span>SORTEIO</span>
+        </button>
+        <button class="nav-btn" data-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>CONFIG</span>
         </button>
         <button class="nav-btn nav-admin" data-view="admin" id="nav-admin" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          ADMIN
+          <span>ADMIN</span>
         </button>
       </nav>
       <div class="header-right">
@@ -116,6 +147,34 @@
       </div>
     </header>
 
+    <!-- MOBILE BOTTOM NAV -->
+    <nav class="mobile-nav">
+      <button class="mobile-nav-btn active" data-view="inventory">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Inventário</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="players">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>Jogadores</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="ranking">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        <span>Ranking</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="raffle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>Sorteio</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Config</span>
+      </button>
+      <button class="mobile-nav-btn mobile-nav-admin" data-view="admin" id="mobile-nav-admin" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Admin</span>
+      </button>
+    </nav>
+
     <!-- MAIN CONTENT -->
     <main class="app-main">
 
@@ -124,7 +183,7 @@
         <div class="view-header">
           <div>
             <h2 class="view-title">MEU INVENTÁRIO</h2>
-            <p class="view-subtitle">Gerencie suas skins e itens</p>
+            <p class="view-subtitle">Gerencie suas skins do Standoff 2</p>
           </div>
           <div class="view-stats" id="inventory-stats">
             <div class="stat-box">
@@ -132,12 +191,12 @@
               <span class="stat-label">ITENS</span>
             </div>
             <div class="stat-box">
-              <span class="stat-value" id="stat-value">$0</span>
-              <span class="stat-label">VALOR TOTAL</span>
+              <span class="stat-value" id="stat-value">0G</span>
+              <span class="stat-label">VALOR ATUAL</span>
             </div>
             <div class="stat-box">
-              <span class="stat-value" id="stat-rarest">—</span>
-              <span class="stat-label">ITEM MAIS RARO</span>
+              <span class="stat-value" id="stat-sub-value">0G</span>
+              <span class="stat-label">SUB-INVENTÁRIO</span>
             </div>
           </div>
           <button class="btn btn-accent" id="btn-add-item">
@@ -146,15 +205,10 @@
           </button>
         </div>
 
-        <div class="inventory-filters">
-          <button class="filter-btn active" data-rarity="all">TODOS</button>
-          <button class="filter-btn" data-rarity="consumer">CONSUMER</button>
-          <button class="filter-btn" data-rarity="industrial">INDUSTRIAL</button>
-          <button class="filter-btn" data-rarity="milspec">MIL-SPEC</button>
-          <button class="filter-btn" data-rarity="restricted">RESTRICTED</button>
-          <button class="filter-btn" data-rarity="classified">CLASSIFIED</button>
-          <button class="filter-btn" data-rarity="covert">COVERT</button>
-          <button class="filter-btn" data-rarity="contraband">CONTRABAND</button>
+        <!-- Inventory Tabs -->
+        <div class="inventory-tabs">
+          <button class="inventory-tab active" data-inv-tab="main">INVENTÁRIO ATUAL</button>
+          <button class="inventory-tab" data-inv-tab="sub">SUB-INVENTÁRIO (HISTÓRICO)</button>
         </div>
 
         <div class="inventory-grid" id="inventory-grid">
@@ -162,6 +216,14 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
             <p>Seu inventário está vazio</p>
             <span>Adicione skins para começar</span>
+          </div>
+        </div>
+
+        <div class="inventory-grid" id="sub-inventory-grid" style="display:none;">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            <p>Sub-inventário vazio</p>
+            <span>Itens vendidos aparecerão aqui</span>
           </div>
         </div>
       </section>
@@ -202,7 +264,7 @@
                   <span class="profile-stat-label">ITENS</span>
                 </div>
                 <div class="profile-stat">
-                  <span class="profile-stat-value" id="profile-value">$0</span>
+                  <span class="profile-stat-value" id="profile-value">0G</span>
                   <span class="profile-stat-label">VALOR</span>
                 </div>
               </div>
@@ -217,13 +279,176 @@
         <div class="view-header">
           <div>
             <h2 class="view-title">RANKING GLOBAL</h2>
-            <p class="view-subtitle">Top jogadores por valor do inventário</p>
+            <p class="view-subtitle">Top jogadores por valor total (inventário + sub-inventário)</p>
           </div>
         </div>
         <div class="ranking-container" id="ranking-container">
           <div class="loading-state">
             <div class="spinner"></div>
             <p>Carregando ranking...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SORTEIO VIEW -->
+      <section id="view-raffle" class="view">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">SORTEIO</h2>
+            <p class="view-subtitle">Participe dos sorteios de Gold</p>
+          </div>
+        </div>
+
+        <div class="raffle-container">
+          <!-- Admin Controls -->
+          <div class="raffle-admin-controls" id="raffle-admin-controls" style="display:none;">
+            <div class="raffle-card">
+              <h3 class="raffle-card-title">CONFIGURAR SORTEIO</h3>
+              
+              <div class="form-group">
+                <label>Nome do Sorteio</label>
+                <input type="text" id="raffle-name" placeholder="Ex: Sorteio de Natal">
+              </div>
+
+              <div class="form-group">
+                <label>Valor do Prêmio (Gold)</label>
+                <input type="number" id="raffle-prize" placeholder="0" min="0" step="1">
+              </div>
+
+              <div class="form-group">
+                <label>Selecionar Participantes</label>
+                <div class="participants-selector">
+                  <div class="participants-search">
+                    <input type="text" id="participants-search" placeholder="Buscar jogador...">
+                    <button class="btn btn-small" id="select-all-participants">Selecionar Todos</button>
+                  </div>
+                  <div class="participants-list" id="participants-list"></div>
+                  <div class="selected-count">
+                    <span id="selected-count">0</span> jogadores selecionados
+                  </div>
+                </div>
+              </div>
+
+              <div class="raffle-actions">
+                <button class="btn btn-primary" id="btn-save-raffle">Salvar Configuração</button>
+                <button class="btn btn-accent" id="btn-spin-raffle" disabled>Girar Roleta</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roulette Display -->
+          <div class="raffle-card raffle-roulette-card">
+            <h3 class="raffle-card-title">ROLETA</h3>
+            <div class="roulette-container">
+              <div class="roulette-pointer"></div>
+              <div class="roulette-wheel" id="roulette-wheel">
+                <div class="roulette-empty">
+                  <p>Nenhum participante selecionado</p>
+                </div>
+              </div>
+            </div>
+            <div class="raffle-info" id="raffle-info">
+              <div class="raffle-info-item">
+                <span class="raffle-info-label">Prêmio:</span>
+                <span class="raffle-info-value" id="raffle-prize-display">0G</span>
+              </div>
+              <div class="raffle-info-item">
+                <span class="raffle-info-label">Participantes:</span>
+                <span class="raffle-info-value" id="raffle-participants-count">0</span>
+              </div>
+            </div>
+            <div class="raffle-winner" id="raffle-winner" style="display:none;">
+              <h4>🎉 VENCEDOR 🎉</h4>
+              <p id="winner-name"></p>
+              <p id="winner-prize"></p>
+            </div>
+          </div>
+
+          <!-- History -->
+          <div class="raffle-card">
+            <h3 class="raffle-card-title">HISTÓRICO DE SORTEIOS</h3>
+            <div class="raffle-history" id="raffle-history">
+              <div class="empty-state">
+                <p>Nenhum sorteio realizado ainda</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS VIEW -->
+      <section id="view-settings" class="view">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">CONFIGURAÇÕES</h2>
+            <p class="view-subtitle">Gerencie suas informações pessoais</p>
+          </div>
+        </div>
+
+        <div class="settings-container">
+          <!-- Profile Info -->
+          <div class="settings-card">
+            <h3 class="settings-card-title">INFORMAÇÕES DO PERFIL</h3>
+            <form id="settings-profile-form">
+              <div class="form-group">
+                <label>Nickname (aparece para todos)</label>
+                <input type="text" id="settings-nickname" placeholder="Seu nickname" required minlength="3" maxlength="20">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="settings-email" placeholder="seu@email.com" required>
+              </div>
+              <div class="form-group">
+                <label>Telefone</label>
+                <input type="tel" id="settings-phone" placeholder="(11) 99999-9999" required>
+              </div>
+              <div class="form-group">
+                <label>ID do Jogo (Standoff 2)</label>
+                <input type="text" id="settings-gameid" placeholder="Seu ID no Standoff 2" required>
+              </div>
+              <button type="submit" class="btn btn-primary">SALVAR ALTERAÇÕES</button>
+              <div id="settings-profile-msg" class="form-msg"></div>
+            </form>
+          </div>
+
+          <!-- Change Password -->
+          <div class="settings-card">
+            <h3 class="settings-card-title">ALTERAR SENHA</h3>
+            <form id="settings-password-form">
+              <div class="form-group">
+                <label>Senha Atual</label>
+                <input type="password" id="settings-current-password" placeholder="••••••••" required>
+              </div>
+              <div class="form-group">
+                <label>Nova Senha</label>
+                <input type="password" id="settings-new-password" placeholder="Mínimo 6 caracteres" required minlength="6">
+              </div>
+              <div class="form-group">
+                <label>Confirmar Nova Senha</label>
+                <input type="password" id="settings-confirm-password" placeholder="Repita a nova senha" required>
+              </div>
+              <button type="submit" class="btn btn-primary">ALTERAR SENHA</button>
+              <div id="settings-password-msg" class="form-msg"></div>
+            </form>
+          </div>
+
+          <!-- Account Info -->
+          <div class="settings-card">
+            <h3 class="settings-card-title">INFORMAÇÕES DA CONTA</h3>
+            <div class="settings-info-grid">
+              <div class="settings-info-item">
+                <span class="settings-info-label">Status</span>
+                <span class="settings-info-value" id="settings-status">—</span>
+              </div>
+              <div class="settings-info-item">
+                <span class="settings-info-label">Tipo de Conta</span>
+                <span class="settings-info-value" id="settings-role">—</span>
+              </div>
+              <div class="settings-info-item">
+                <span class="settings-info-label">Membro desde</span>
+                <span class="settings-info-value" id="settings-since">—</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -248,7 +473,7 @@
               <span class="stat-label">TOTAL ITENS</span>
             </div>
             <div class="stat-box">
-              <span class="stat-value" id="admin-stat-value">$0</span>
+              <span class="stat-value" id="admin-stat-value">0G</span>
               <span class="stat-label">VALOR GLOBAL</span>
             </div>
           </div>
@@ -266,7 +491,6 @@
           </div>
         </div>
 
-        <!-- Admin: User Detail Modal -->
         <div id="admin-user-modal" class="modal hidden">
           <div class="modal-overlay"></div>
           <div class="modal-content admin-user-detail">
@@ -280,14 +504,12 @@
               </div>
               <button class="btn btn-danger-admin" id="admin-delete-user-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                EXCLUIR USUÁRIO
+                EXCLUIR
               </button>
             </div>
             <div class="admin-detail-items-header">
               <h4>INVENTÁRIO DO USUÁRIO</h4>
-              <button class="btn btn-danger-admin btn-sm" id="admin-clear-inventory-btn">
-                LIMPAR INVENTÁRIO
-              </button>
+              <button class="btn btn-danger-admin btn-sm" id="admin-clear-inventory-btn">LIMPAR TUDO</button>
             </div>
             <div class="admin-detail-items" id="admin-detail-items"></div>
           </div>
@@ -304,93 +526,97 @@
       <button class="modal-close">&times;</button>
       <h3 class="modal-title">ADICIONAR ITEM</h3>
       <form id="add-item-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Nome da Skin</label>
-            <input type="text" id="item-name" placeholder="Ex: AK-47 | Redline" required>
-          </div>
-          <div class="form-group">
-            <label>Arma</label>
-            <select id="item-weapon" required>
-              <option value="">Selecionar...</option>
-              <option value="AK-47">AK-47</option>
-              <option value="M4A4">M4A4</option>
-              <option value="M4A1-S">M4A1-S</option>
-              <option value="AWP">AWP</option>
-              <option value="Desert Eagle">Desert Eagle</option>
-              <option value="USP-S">USP-S</option>
-              <option value="Glock-18">Glock-18</option>
-              <option value="P250">P250</option>
-              <option value="Five-SeveN">Five-SeveN</option>
-              <option value="Tec-9">Tec-9</option>
-              <option value="CZ75-Auto">CZ75-Auto</option>
-              <option value="FAMAS">FAMAS</option>
-              <option value="Galil AR">Galil AR</option>
-              <option value="SG 553">SG 553</option>
-              <option value="AUG">AUG</option>
-              <option value="SSG 08">SSG 08</option>
-              <option value="SCAR-20">SCAR-20</option>
-              <option value="G3SG1">G3SG1</option>
-              <option value="Nova">Nova</option>
-              <option value="XM1014">XM1014</option>
-              <option value="MAG-7">MAG-7</option>
-              <option value="Sawed-Off">Sawed-Off</option>
-              <option value="MP9">MP9</option>
-              <option value="MAC-10">MAC-10</option>
-              <option value="UMP-45">UMP-45</option>
-              <option value="P90">P90</option>
-              <option value="PP-Bizon">PP-Bizon</option>
-              <option value="MP7">MP7</option>
-              <option value="MP5-SD">MP5-SD</option>
-              <option value="Negev">Negev</option>
-              <option value="M249">M249</option>
-              <option value="Facas">Faca</option>
-              <option value="Luvas">Luvas</option>
-            </select>
+        <!-- Step 1: Category -->
+        <div class="form-group">
+          <label>Categoria</label>
+          <select id="item-category" required>
+            <option value="">Selecionar categoria...</option>
+          </select>
+        </div>
+        <!-- Step 2: Weapon/Item -->
+        <div class="form-group" id="weapon-group" style="display:none;">
+          <label>Arma / Item</label>
+          <select id="item-weapon" required>
+            <option value="">Selecionar...</option>
+          </select>
+        </div>
+        <!-- Step 3: Skin name -->
+        <div class="form-group" id="skin-name-group" style="display:none;">
+          <label>Nome da Skin</label>
+          <input type="text" id="item-name" placeholder="Ex: Dragon Lore, Neon Rider..." required>
+        </div>
+        <!-- Step 4: Price -->
+        <div class="form-group" id="skin-price-group" style="display:none;">
+          <label>Valor (Gold)</label>
+          <input type="number" id="item-price" placeholder="0" min="0" step="1" required>
+        </div>
+        <!-- Step 5: Photo -->
+        <div class="form-group" id="skin-photo-group" style="display:none;">
+          <label>Foto da Skin</label>
+          <div class="photo-upload-area" id="photo-upload-area">
+            <input type="file" id="item-photo" accept="image/*" style="display:none;">
+            <div class="photo-upload-placeholder" id="photo-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Toque para adicionar foto</span>
+            </div>
+            <img id="photo-preview" class="photo-preview" style="display:none;">
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Wear (Condição)</label>
-            <select id="item-wear" required>
-              <option value="FN">Factory New</option>
-              <option value="MW">Minimal Wear</option>
-              <option value="FT">Field-Tested</option>
-              <option value="WW">Well-Worn</option>
-              <option value="BS">Battle-Scarred</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Raridade</label>
-            <select id="item-rarity" required>
-              <option value="consumer">Consumer Grade</option>
-              <option value="industrial">Industrial Grade</option>
-              <option value="milspec" selected>Mil-Spec</option>
-              <option value="restricted">Restricted</option>
-              <option value="classified">Classified</option>
-              <option value="covert">Covert</option>
-              <option value="contraband">Contraband</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Preço (USD)</label>
-            <input type="number" id="item-price" placeholder="0.00" min="0" step="0.01" required>
-          </div>
-          <div class="form-group">
-            <label>StatTrak</label>
-            <select id="item-stattrak">
-              <option value="false">Não</option>
-              <option value="true">Sim</option>
-            </select>
-          </div>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-item" style="display:none;">ADICIONAR AO INVENTÁRIO</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDIT ITEM MODAL -->
+  <div id="edit-item-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content edit-item-modal">
+      <button class="modal-close">&times;</button>
+      <h3 class="modal-title">EDITAR ITEM</h3>
+      <form id="edit-item-form">
+        <div class="form-group">
+          <label>Nome da Skin</label>
+          <input type="text" id="edit-item-name" required>
         </div>
         <div class="form-group">
-          <label>Float Value (opcional)</label>
-          <input type="number" id="item-float" placeholder="0.000000" min="0" max="1" step="0.000001">
+          <label>Valor (Gold)</label>
+          <input type="number" id="edit-item-price" min="0" step="1" required>
         </div>
-        <button type="submit" class="btn btn-primary btn-full">ADICIONAR AO INVENTÁRIO</button>
+        <div class="form-group">
+          <label>Foto da Skin</label>
+          <div class="photo-upload-area" id="edit-photo-upload-area">
+            <input type="file" id="edit-item-photo" accept="image/*" style="display:none;">
+            <div class="photo-upload-placeholder" id="edit-photo-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Toque para alterar foto</span>
+            </div>
+            <img id="edit-photo-preview" class="photo-preview" style="display:none;">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">SALVAR ALTERAÇÕES</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- SELL ITEM MODAL -->
+  <div id="sell-item-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content sell-item-modal">
+      <button class="modal-close">&times;</button>
+      <h3 class="modal-title">VENDER ITEM</h3>
+      <div class="sell-item-info">
+        <div class="sell-item-preview" id="sell-item-preview"></div>
+        <div class="sell-item-details">
+          <h4 id="sell-item-name">Nome da Skin</h4>
+          <p class="sell-item-original-price">Valor original: <span id="sell-item-original-price">0G</span></p>
+        </div>
+      </div>
+      <form id="sell-item-form">
+        <div class="form-group">
+          <label>Valor de Venda (Gold)</label>
+          <input type="number" id="sell-item-price" min="0" step="1" placeholder="0" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">CONFIRMAR VENDA</button>
       </form>
     </div>
   </div>
