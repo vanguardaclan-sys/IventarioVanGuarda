@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKIN VAULT — CS2 Inventory Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen" class="screen active">
+    <div class="auth-bg-grid"></div>
+    <div class="auth-container">
+      <div class="auth-logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="5" y="15" width="50" height="30" rx="3" stroke="currentColor" stroke-width="2"/>
+            <rect x="15" y="22" width="20" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="45" cy="30" r="4" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="10" y1="40" x2="50" y2="40" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+          </svg>
+        </div>
+        <h1 class="logo-text">SKIN<span>VAULT</span></h1>
+        <p class="logo-sub">CS2 INVENTORY TRACKER</p>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login">ENTRAR</button>
+          <button class="auth-tab" data-tab="register">REGISTRAR</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="auth-form active">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="seu@email.com" required>
+          </div>
+          <div class="form-group">
+            <label>Senha</label>
+            <input type="password" id="login-password" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">ENTRAR</button>
+          <div id="login-error" class="form-error"></div>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" class="auth-form">
+          <div class="form-group">
+            <label>Nome de Exibição</label>
+            <input type="text" id="register-name" placeholder="Seu nickname" required minlength="3" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="register-email" placeholder="seu@email.com" required>
+          </div>
+          <div class="form-group">
+            <label>Senha</label>
+            <input type="password" id="register-password" placeholder="Mínimo 6 caracteres" required minlength="6">
+          </div>
+          <div class="form-group">
+            <label>Confirmar Senha</label>
+            <input type="password" id="register-confirm" placeholder="Repita a senha" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">CRIAR CONTA</button>
+          <div id="register-error" class="form-error"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app-screen" class="screen">
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="header-logo">
+          <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+            <rect x="5" y="15" width="50" height="30" rx="3" stroke="currentColor" stroke-width="2"/>
+            <rect x="15" y="22" width="20" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="45" cy="30" r="4" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span class="header-title">SKINVAULT</span>
+        </div>
+      </div>
+      <nav class="header-nav">
+        <button class="nav-btn active" data-view="inventory">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          MEU INVENTÁRIO
+        </button>
+        <button class="nav-btn" data-view="players">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          JOGADORES
+        </button>
+        <button class="nav-btn" data-view="ranking">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          RANKING
+        </button>
+        <button class="nav-btn nav-admin" data-view="admin" id="nav-admin" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          ADMIN
+        </button>
+      </nav>
+      <div class="header-right">
+        <div class="user-badge">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <span id="user-display-name">Player</span>
+        </div>
+        <button class="btn-logout" id="btn-logout" title="Sair">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="app-main">
+
+      <!-- INVENTORY VIEW -->
+      <section id="view-inventory" class="view active">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">MEU INVENTÁRIO</h2>
+            <p class="view-subtitle">Gerencie suas skins e itens</p>
+          </div>
+          <div class="view-stats" id="inventory-stats">
+            <div class="stat-box">
+              <span class="stat-value" id="stat-items">0</span>
+              <span class="stat-label">ITENS</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-value" id="stat-value">$0</span>
+              <span class="stat-label">VALOR TOTAL</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-value" id="stat-rarest">—</span>
+              <span class="stat-label">ITEM MAIS RARO</span>
+            </div>
+          </div>
+          <button class="btn btn-accent" id="btn-add-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            ADICIONAR ITEM
+          </button>
+        </div>
+
+        <div class="inventory-filters">
+          <button class="filter-btn active" data-rarity="all">TODOS</button>
+          <button class="filter-btn" data-rarity="consumer">CONSUMER</button>
+          <button class="filter-btn" data-rarity="industrial">INDUSTRIAL</button>
+          <button class="filter-btn" data-rarity="milspec">MIL-SPEC</button>
+          <button class="filter-btn" data-rarity="restricted">RESTRICTED</button>
+          <button class="filter-btn" data-rarity="classified">CLASSIFIED</button>
+          <button class="filter-btn" data-rarity="covert">COVERT</button>
+          <button class="filter-btn" data-rarity="contraband">CONTRABAND</button>
+        </div>
+
+        <div class="inventory-grid" id="inventory-grid">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            <p>Seu inventário está vazio</p>
+            <span>Adicione skins para começar</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PLAYERS VIEW -->
+      <section id="view-players" class="view">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">JOGADORES</h2>
+            <p class="view-subtitle">Explore inventários da comunidade</p>
+          </div>
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="search-players" placeholder="Buscar jogador...">
+          </div>
+        </div>
+        <div class="players-grid" id="players-grid">
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando jogadores...</p>
+          </div>
+        </div>
+
+        <!-- Player Profile Modal -->
+        <div id="player-modal" class="modal hidden">
+          <div class="modal-overlay"></div>
+          <div class="modal-content player-profile">
+            <button class="modal-close">&times;</button>
+            <div class="profile-header">
+              <div class="profile-avatar" id="profile-avatar">?</div>
+              <div class="profile-info">
+                <h3 id="profile-name">Player</h3>
+                <p id="profile-since">Membro desde —</p>
+              </div>
+              <div class="profile-stats">
+                <div class="profile-stat">
+                  <span class="profile-stat-value" id="profile-items">0</span>
+                  <span class="profile-stat-label">ITENS</span>
+                </div>
+                <div class="profile-stat">
+                  <span class="profile-stat-value" id="profile-value">$0</span>
+                  <span class="profile-stat-label">VALOR</span>
+                </div>
+              </div>
+            </div>
+            <div class="profile-inventory" id="profile-inventory"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RANKING VIEW -->
+      <section id="view-ranking" class="view">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">RANKING GLOBAL</h2>
+            <p class="view-subtitle">Top jogadores por valor do inventário</p>
+          </div>
+        </div>
+        <div class="ranking-container" id="ranking-container">
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando ranking...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN VIEW -->
+      <section id="view-admin" class="view">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">
+              <span class="admin-badge-inline">ADMIN</span>
+              PAINEL ADMINISTRATIVO
+            </h2>
+            <p class="view-subtitle">Gerencie usuários e inventários do sistema</p>
+          </div>
+          <div class="view-stats" id="admin-stats">
+            <div class="stat-box">
+              <span class="stat-value" id="admin-stat-users">0</span>
+              <span class="stat-label">USUÁRIOS</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-value" id="admin-stat-items">0</span>
+              <span class="stat-label">TOTAL ITENS</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-value" id="admin-stat-value">$0</span>
+              <span class="stat-label">VALOR GLOBAL</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="admin-search" placeholder="Buscar usuário por nome ou email...">
+        </div>
+
+        <div class="admin-users-list" id="admin-users-list">
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando usuários...</p>
+          </div>
+        </div>
+
+        <!-- Admin: User Detail Modal -->
+        <div id="admin-user-modal" class="modal hidden">
+          <div class="modal-overlay"></div>
+          <div class="modal-content admin-user-detail">
+            <button class="modal-close">&times;</button>
+            <div class="admin-detail-header">
+              <div class="admin-detail-avatar" id="admin-detail-avatar">?</div>
+              <div class="admin-detail-info">
+                <h3 id="admin-detail-name">User</h3>
+                <p id="admin-detail-email">email</p>
+                <p id="admin-detail-since">desde —</p>
+              </div>
+              <button class="btn btn-danger-admin" id="admin-delete-user-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                EXCLUIR USUÁRIO
+              </button>
+            </div>
+            <div class="admin-detail-items-header">
+              <h4>INVENTÁRIO DO USUÁRIO</h4>
+              <button class="btn btn-danger-admin btn-sm" id="admin-clear-inventory-btn">
+                LIMPAR INVENTÁRIO
+              </button>
+            </div>
+            <div class="admin-detail-items" id="admin-detail-items"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ADD ITEM MODAL -->
+  <div id="add-item-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content add-item-modal">
+      <button class="modal-close">&times;</button>
+      <h3 class="modal-title">ADICIONAR ITEM</h3>
+      <form id="add-item-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome da Skin</label>
+            <input type="text" id="item-name" placeholder="Ex: AK-47 | Redline" required>
+          </div>
+          <div class="form-group">
+            <label>Arma</label>
+            <select id="item-weapon" required>
+              <option value="">Selecionar...</option>
+              <option value="AK-47">AK-47</option>
+              <option value="M4A4">M4A4</option>
+              <option value="M4A1-S">M4A1-S</option>
+              <option value="AWP">AWP</option>
+              <option value="Desert Eagle">Desert Eagle</option>
+              <option value="USP-S">USP-S</option>
+              <option value="Glock-18">Glock-18</option>
+              <option value="P250">P250</option>
+              <option value="Five-SeveN">Five-SeveN</option>
+              <option value="Tec-9">Tec-9</option>
+              <option value="CZ75-Auto">CZ75-Auto</option>
+              <option value="FAMAS">FAMAS</option>
+              <option value="Galil AR">Galil AR</option>
+              <option value="SG 553">SG 553</option>
+              <option value="AUG">AUG</option>
+              <option value="SSG 08">SSG 08</option>
+              <option value="SCAR-20">SCAR-20</option>
+              <option value="G3SG1">G3SG1</option>
+              <option value="Nova">Nova</option>
+              <option value="XM1014">XM1014</option>
+              <option value="MAG-7">MAG-7</option>
+              <option value="Sawed-Off">Sawed-Off</option>
+              <option value="MP9">MP9</option>
+              <option value="MAC-10">MAC-10</option>
+              <option value="UMP-45">UMP-45</option>
+              <option value="P90">P90</option>
+              <option value="PP-Bizon">PP-Bizon</option>
+              <option value="MP7">MP7</option>
+              <option value="MP5-SD">MP5-SD</option>
+              <option value="Negev">Negev</option>
+              <option value="M249">M249</option>
+              <option value="Facas">Faca</option>
+              <option value="Luvas">Luvas</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Wear (Condição)</label>
+            <select id="item-wear" required>
+              <option value="FN">Factory New</option>
+              <option value="MW">Minimal Wear</option>
+              <option value="FT">Field-Tested</option>
+              <option value="WW">Well-Worn</option>
+              <option value="BS">Battle-Scarred</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Raridade</label>
+            <select id="item-rarity" required>
+              <option value="consumer">Consumer Grade</option>
+              <option value="industrial">Industrial Grade</option>
+              <option value="milspec" selected>Mil-Spec</option>
+              <option value="restricted">Restricted</option>
+              <option value="classified">Classified</option>
+              <option value="covert">Covert</option>
+              <option value="contraband">Contraband</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Preço (USD)</label>
+            <input type="number" id="item-price" placeholder="0.00" min="0" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>StatTrak</label>
+            <select id="item-stattrak">
+              <option value="false">Não</option>
+              <option value="true">Sim</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Float Value (opcional)</label>
+          <input type="number" id="item-float" placeholder="0.000000" min="0" max="1" step="0.000001">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">ADICIONAR AO INVENTÁRIO</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- FIREBASE -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
