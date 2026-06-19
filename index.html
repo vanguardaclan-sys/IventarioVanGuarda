@@ -386,6 +386,28 @@
         </div>
 
         <div class="settings-container">
+          <!-- Profile Photo -->
+          <div class="settings-card">
+            <h3 class="settings-card-title">FOTO DO PERFIL</h3>
+            <div class="profile-photo-section">
+              <div class="profile-photo-preview" id="profile-photo-preview">
+                <div class="profile-photo-placeholder" id="profile-photo-placeholder">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <span>Sem foto</span>
+                </div>
+                <img id="profile-photo-img" style="display:none;">
+              </div>
+              <div class="profile-photo-actions">
+                <input type="file" id="profile-photo-input" accept="image/*" style="display:none;">
+                <button type="button" class="btn btn-primary" id="btn-upload-photo">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  ENVIAR FOTO
+                </button>
+                <button type="button" class="btn btn-ghost" id="btn-remove-photo" style="display:none;">REMOVER FOTO</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Profile Info -->
           <div class="settings-card">
             <h3 class="settings-card-title">INFORMAÇÕES DO PERFIL</h3>
@@ -618,6 +640,33 @@
         </div>
         <button type="submit" class="btn btn-primary btn-full">CONFIRMAR VENDA</button>
       </form>
+    </div>
+  </div>
+
+  <!-- FULLSCREEN IMAGE MODAL -->
+  <div id="fullscreen-image-modal" class="fullscreen-modal hidden">
+    <div class="fullscreen-overlay"></div>
+    <button class="fullscreen-close">&times;</button>
+    <img id="fullscreen-image" src="" alt="">
+  </div>
+
+  <!-- DELETE REASON MODAL -->
+  <div id="delete-reason-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content delete-reason-modal">
+      <button class="modal-close">&times;</button>
+      <h3 class="modal-title">EXCLUIR CONTA</h3>
+      <div class="delete-reason-body">
+        <p>Tem certeza que deseja excluir a conta de <strong id="delete-reason-username"></strong>?</p>
+        <div class="form-group">
+          <label>Motivo da exclusão</label>
+          <textarea id="delete-reason-text" placeholder="Informe o motivo da exclusão..." rows="3" required></textarea>
+        </div>
+        <button type="button" class="btn btn-danger-admin btn-full" id="btn-confirm-delete-user">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          CONFIRMAR EXCLUSÃO
+        </button>
+      </div>
     </div>
   </div>
 

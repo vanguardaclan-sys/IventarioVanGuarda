@@ -1605,3 +1605,298 @@ body {
     align-items: flex-start;
   }
 }
+
+/* ============================================
+   PROFILE PHOTO UPLOAD
+   ============================================ */
+.profile-photo-section {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.profile-photo-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-input);
+  border: 2px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-muted);
+}
+
+.profile-photo-placeholder span {
+  font-size: 0.7rem;
+}
+
+.profile-photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* ============================================
+   FULLSCREEN IMAGE MODAL
+   ============================================ */
+.fullscreen-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.95);
+  animation: fadeIn 0.2s ease;
+}
+
+.fullscreen-modal.hidden {
+  display: none;
+}
+
+.fullscreen-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.fullscreen-close {
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2.5rem;
+  cursor: pointer;
+  z-index: 10;
+  line-height: 1;
+  opacity: 0.7;
+  transition: var(--transition);
+}
+
+.fullscreen-close:hover {
+  opacity: 1;
+}
+
+#fullscreen-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  z-index: 5;
+  border-radius: var(--radius);
+  animation: modalIn 0.25s ease;
+}
+
+/* ============================================
+   DELETE REASON MODAL
+   ============================================ */
+.delete-reason-modal {
+  max-width: 450px;
+}
+
+.delete-reason-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.delete-reason-body p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.delete-reason-body p strong {
+  color: var(--text-primary);
+}
+
+.delete-reason-body textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.9rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  resize: vertical;
+  outline: none;
+  width: 100%;
+  transition: var(--transition);
+}
+
+.delete-reason-body textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.btn-danger-admin.btn-full {
+  width: 100%;
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+/* ============================================
+   SUB-INVENTORY DELETE BUTTON
+   ============================================ */
+.sub-item-card {
+  position: relative;
+}
+
+.sub-item-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ff4a5e40;
+  border: 1px solid #ff4a5e60;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  z-index: 3;
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.sub-item-card:hover .sub-item-delete {
+  opacity: 1;
+}
+
+.sub-item-delete:hover {
+  background: var(--danger);
+}
+
+/* ============================================
+   ADMIN ACCOUNT INFO SECTION
+   ============================================ */
+.admin-detail-account-info {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-detail-account-info h4 {
+  font-family: var(--font-condensed);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+.admin-account-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+}
+
+.admin-account-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+}
+
+.admin-account-info-label {
+  font-family: var(--font-condensed);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.admin-account-info-value {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+/* ============================================
+   SORT BUTTON
+   ============================================ */
+.inventory-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-condensed);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.inventory-sort-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.inventory-sort-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.inventory-sort-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ============================================
+   ADMIN DELETE REASON DISPLAY
+   ============================================ */
+.admin-delete-reason {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #ff4a5e10;
+  border: 1px solid #ff4a5e30;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.admin-delete-reason strong {
+  color: var(--danger);
+  font-family: var(--font-condensed);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  display: block;
+  margin-bottom: 0.2rem;
+}

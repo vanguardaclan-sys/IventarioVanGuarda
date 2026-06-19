@@ -203,7 +203,15 @@ function updateUserBadge() {
   const name = currentUser.displayName || currentUserData?.displayName || 'Player';
   $('#user-display-name').textContent = name;
   const avatar = $('#user-avatar');
-  avatar.textContent = name.charAt(0).toUpperCase();
+  
+  // Show profile photo if available
+  const photoData = currentUserData?.profilePhoto;
+  if (photoData) {
+    avatar.innerHTML = `<img src="${photoData}" alt="${name}">`;
+  } else {
+    avatar.textContent = name.charAt(0).toUpperCase();
+  }
+  
   if (isAdmin()) avatar.classList.add('admin-avatar');
   else avatar.classList.remove('admin-avatar');
 }
@@ -276,7 +284,78 @@ function loadSettings() {
   const sinceEl = $('#settings-since');
   const createdDate = currentUserData.createdAt?.toDate();
   sinceEl.textContent = createdDate ? createdDate.toLocaleDateString('pt-BR') : '—';
+
+  // Load profile photo
+  loadProfilePhoto();
 }
+
+function loadProfilePhoto() {
+  const photoData = currentUserData?.profilePhoto;
+  const img = $('#profile-photo-img');
+  const placeholder = $('#profile-photo-placeholder');
+  const removeBtn = $('#btn-remove-photo');
+
+  if (photoData) {
+    img.src = photoData;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    removeBtn.style.display = '';
+  } else {
+    img.style.display = 'none';
+    placeholder.style.display = '';
+    removeBtn.style.display = 'none';
+  }
+}
+
+// Profile photo upload
+$('#btn-upload-photo').addEventListener('click', () => {
+  $('#profile-photo-input').click();
+});
+
+$('#profile-photo-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 200;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+      try {
+        await db.collection('users').doc(currentUser.uid).update({ profilePhoto: photoBase64 });
+        currentUserData.profilePhoto = photoBase64;
+        loadProfilePhoto();
+        updateUserBadge();
+        showToast('Foto de perfil atualizada!', 'success');
+      } catch (err) {
+        showToast('Erro ao salvar foto: ' + err.message, 'error');
+      }
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+$('#btn-remove-photo').addEventListener('click', async () => {
+  try {
+    await db.collection('users').doc(currentUser.uid).update({ profilePhoto: firebase.firestore.FieldValue.delete() });
+    currentUserData.profilePhoto = null;
+    loadProfilePhoto();
+    updateUserBadge();
+    showToast('Foto de perfil removida.', 'success');
+  } catch (err) {
+    showToast('Erro ao remover foto.', 'error');
+  }
+});
 
 $('#settings-profile-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -565,7 +644,7 @@ function openSellModal(item) {
   }
   
   $('#sell-item-name').textContent = item.name;
-  $('#sell-item-original-price').textContent = (item.price || 0).toLocaleString('pt-BR') + 'G';
+  $('#sell-item-original-price').textContent = formatGold(item.price);
   $('#sell-item-price').value = '';
   
   $('#sell-item-modal').classList.remove('hidden');
@@ -587,7 +666,7 @@ $('#sell-item-form').addEventListener('submit', async (e) => {
     // Remove from main inventory
     await db.collection('users').doc(currentUser.uid).collection('items').doc(sellingItem.id).delete();
     
-    showToast(`"${sellingItem.name}" vendido por ${sellPrice.toLocaleString('pt-BR')}G!`, 'success');
+    showToast(`"${sellingItem.name}" vendido por ${formatGold(sellPrice)}!`, 'success');
     $('#sell-item-modal').classList.add('hidden');
     loadInventory();
   } catch (err) {
@@ -623,12 +702,16 @@ async function loadInventory() {
       .collection('items').orderBy('addedAt', 'desc').get();
     inventoryItems = [];
     snapshot.forEach(doc => inventoryItems.push({ id: doc.id, ...doc.data() }));
+    // Sort by price descending (maior → menor)
+    inventoryItems.sort((a, b) => (b.price || 0) - (a.price || 0));
     
     // Load sub-inventory
     const subSnapshot = await db.collection('users').doc(currentUser.uid)
       .collection('subItems').orderBy('soldAt', 'desc').get();
     subInventoryItems = [];
     subSnapshot.forEach(doc => subInventoryItems.push({ id: doc.id, ...doc.data() }));
+    // Sort sub-inventory by soldPrice descending
+    subInventoryItems.sort((a, b) => (b.soldPrice || 0) - (a.soldPrice || 0));
     
     updateInventoryStats();
     renderInventory();
@@ -644,8 +727,8 @@ function updateInventoryStats() {
   const subValue = subInventoryItems.reduce((sum, item) => sum + (item.soldPrice || 0), 0);
   
   $('#stat-items').textContent = totalItems;
-  $('#stat-value').textContent = totalValue.toLocaleString('pt-BR') + 'G';
-  $('#stat-sub-value').textContent = subValue.toLocaleString('pt-BR') + 'G';
+  $('#stat-value').textContent = formatGold(totalValue);
+  $('#stat-sub-value').textContent = formatGold(subValue);
 }
 
 function renderInventory() {
@@ -675,11 +758,12 @@ function renderSubInventory() {
     return;
   }
   grid.innerHTML = subInventoryItems.map(item => createSubItemCard(item)).join('');
+  attachSubItemActions(grid);
 }
 
 function createItemCard(item) {
   const imageHtml = item.photo
-    ? `<img src="${item.photo}" alt="${item.name}">`
+    ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true">`
     : `<span class="item-weapon-icon">🔫</span>`;
 
   return `
@@ -701,7 +785,7 @@ function createItemCard(item) {
         <div class="item-card-name" title="${item.name}">${item.name}</div>
         <div class="item-card-weapon">${item.weapon || ''}</div>
         <div class="item-card-bottom">
-          <span class="item-card-price">${(item.price || 0).toLocaleString('pt-BR')}G</span>
+          <span class="item-card-price">${formatGold(item.price)}</span>
         </div>
       </div>
     </div>`;
@@ -709,19 +793,20 @@ function createItemCard(item) {
 
 function createSubItemCard(item) {
   const imageHtml = item.photo
-    ? `<img src="${item.photo}" alt="${item.name}">`
+    ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true">`
     : `<span class="item-weapon-icon">🔫</span>`;
 
   return `
     <div class="sub-item-card">
       <div class="item-sold-badge">VENDIDO</div>
+      <button class="sub-item-delete" data-action="delete-sub" data-id="${item.id}" title="Excluir">&times;</button>
       <div class="item-card-image">${imageHtml}</div>
       <div class="item-card-info">
         <div class="item-card-category">${item.category || ''}</div>
         <div class="item-card-name" title="${item.name}">${item.name}</div>
         <div class="item-card-weapon">${item.weapon || ''}</div>
         <div class="item-card-bottom">
-          <span class="item-sold-price">${(item.soldPrice || 0).toLocaleString('pt-BR')}G</span>
+          <span class="item-sold-price">${formatGold(item.soldPrice)}</span>
         </div>
       </div>
     </div>`;
@@ -749,6 +834,41 @@ function attachItemActions(grid) {
       e.stopPropagation();
       const item = inventoryItems.find(i => i.id === btn.dataset.id);
       if (item) deleteItem(item.id, item.name);
+    });
+  });
+
+  // Fullscreen image on click
+  grid.querySelectorAll('.skin-clickable-img').forEach(img => {
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showFullscreenImage(img.src);
+    });
+  });
+}
+
+function attachSubItemActions(grid) {
+  grid.querySelectorAll('[data-action="delete-sub"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const itemId = btn.dataset.id;
+      const item = subInventoryItems.find(i => i.id === itemId);
+      if (!item) return;
+      if (!confirm(`Excluir "${item.name}" do sub-inventário?`)) return;
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('subItems').doc(itemId).delete();
+        showToast('Item removido do sub-inventário.', 'success');
+        loadInventory();
+      } catch (err) {
+        showToast('Erro ao excluir.', 'error');
+      }
+    });
+  });
+
+  // Fullscreen image on click
+  grid.querySelectorAll('.skin-clickable-img').forEach(img => {
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showFullscreenImage(img.src);
     });
   });
 }
@@ -790,7 +910,8 @@ async function loadPlayers() {
         gameId: userData.gameId || '', phone: userData.phone || '',
         createdAt: userData.createdAt, itemCount, totalValue,
         subItemCount, subValue,
-        isAdmin: userData.role === 'admin'
+        isAdmin: userData.role === 'admin',
+        profilePhoto: userData.profilePhoto || null
       });
     }
     renderPlayers(allUsers);
@@ -812,14 +933,14 @@ function renderPlayers(players) {
   }
   grid.innerHTML = players.map(p => `
     <div class="player-card" data-uid="${p.uid}">
-      <div class="player-card-avatar">${p.displayName.charAt(0).toUpperCase()}</div>
+      <div class="player-card-avatar">${p.profilePhoto ? `<img src="${p.profilePhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : p.displayName.charAt(0).toUpperCase()}</div>
       <div class="player-card-info">
         <div class="player-card-name">${p.displayName}${p.isAdmin ? ' <span class="admin-tag">ADMIN</span>' : ''}</div>
         <div class="player-card-meta">${p.itemCount} ${p.itemCount === 1 ? 'item' : 'itens'}</div>
       </div>
       <div class="player-card-stats">
         <div>
-          <div class="player-card-stat-value">${(p.totalValue + p.subValue).toLocaleString('pt-BR')}G</div>
+          <div class="player-card-stat-value">${formatGold(p.totalValue + p.subValue)}</div>
           <div class="player-card-stat-label">VALOR TOTAL</div>
         </div>
       </div>
@@ -852,11 +973,15 @@ async function openPlayerProfile(uid) {
     subItemsSnap.forEach(doc => { const d = doc.data(); subItems.push(d); subValue += d.soldPrice || 0; });
 
     $('#profile-avatar').textContent = (userData.displayName || 'P').charAt(0).toUpperCase();
+    // Show profile photo if available
+    if (userData.profilePhoto) {
+      $('#profile-avatar').innerHTML = `<img src="${userData.profilePhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    }
     $('#profile-name').textContent = userData.displayName || 'Player';
     const createdDate = userData.createdAt?.toDate();
     $('#profile-since').textContent = createdDate ? `Membro desde ${createdDate.toLocaleDateString('pt-BR')}` : 'Membro recente';
     $('#profile-items').textContent = items.length + subItems.length;
-    $('#profile-value').textContent = (totalValue + subValue).toLocaleString('pt-BR') + 'G';
+    $('#profile-value').textContent = formatGold(totalValue + subValue);
 
     const profileGrid = $('#profile-inventory');
     let html = '';
@@ -868,7 +993,7 @@ async function openPlayerProfile(uid) {
           <div class="profile-item-info">
             <div class="profile-item-name">${item.name}</div>
             <div class="profile-item-weapon">${item.weapon || ''}</div>
-            <div class="profile-item-price">${(item.price || 0).toLocaleString('pt-BR')}G</div>
+            <div class="profile-item-price">${formatGold(item.price)}</div>
           </div>
         </div>`).join('');
     }
@@ -880,12 +1005,21 @@ async function openPlayerProfile(uid) {
           <div class="profile-item-info">
             <div class="profile-item-name">${item.name} <span style="color:var(--success);font-size:0.6rem">VENDIDO</span></div>
             <div class="profile-item-weapon">${item.weapon || ''}</div>
-            <div class="profile-item-price" style="color:var(--success)">${(item.soldPrice || 0).toLocaleString('pt-BR')}G</div>
+            <div class="profile-item-price" style="color:var(--success)">${formatGold(item.soldPrice)}</div>
           </div>
         </div>`).join('');
     }
     
     profileGrid.innerHTML = html || '<div class="empty-state"><p>Inventário vazio</p></div>';
+
+    // Fullscreen image on click in profile
+    profileGrid.querySelectorAll('img').forEach(img => {
+      img.style.cursor = 'pointer';
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showFullscreenImage(img.src);
+      });
+    });
   } catch (err) {
     console.error(err);
     showToast('Erro ao carregar perfil.', 'error');
@@ -947,7 +1081,7 @@ function renderRanking(rankings) {
             <div class="podium-rank">#${pos}</div>
             <div class="podium-avatar">${p.displayName.charAt(0).toUpperCase()}</div>
             <div class="podium-name">${p.displayName}${p.isAdmin ? ' <span class="admin-tag">ADM</span>' : ''}${p.isCurrentUser ? ' (Você)' : ''}</div>
-            <div class="podium-value">${p.totalCombined.toLocaleString('pt-BR')}G</div>
+            <div class="podium-value">${formatGold(p.totalCombined)}</div>
           </div>`;
       }
     });
@@ -980,10 +1114,10 @@ function renderRanking(rankings) {
         <td><span class="rank-items-count">${player.itemCount + player.subItemCount}</span></td>
         <td>
           <div class="rank-values">
-            <span class="rank-value-main">${player.totalCombined.toLocaleString('pt-BR')}G</span>
+            <span class="rank-value-main">${formatGold(player.totalCombined)}</span>
             <div class="rank-value-sub">
-              <span class="rank-value-current">Atual: ${player.totalValue.toLocaleString('pt-BR')}G</span>
-              <span class="rank-value-sold">Vendido: ${player.subValue.toLocaleString('pt-BR')}G</span>
+              <span class="rank-value-current">Atual: ${formatGold(player.totalValue)}</span>
+              <span class="rank-value-sold">Vendido: ${formatGold(player.subValue)}</span>
             </div>
           </div>
         </td>
@@ -1038,7 +1172,7 @@ async function loadAdminPanel() {
     }
     $('#admin-stat-users').textContent = adminAllUsers.length;
     $('#admin-stat-items').textContent = globalItems;
-    $('#admin-stat-value').textContent = globalValue.toLocaleString('pt-BR') + 'G';
+    $('#admin-stat-value').textContent = formatGold(globalValue);
     renderAdminUsers(adminAllUsers);
   } catch (err) {
     console.error(err);
@@ -1077,7 +1211,7 @@ function renderAdminUsers(users) {
       </div>
       <div class="admin-user-stats">
         <div class="admin-user-stat"><div class="admin-user-stat-value">${user.itemCount}</div><div class="admin-user-stat-label">ITENS</div></div>
-        <div class="admin-user-stat"><div class="admin-user-stat-value">${user.totalValue.toLocaleString('pt-BR')}G</div><div class="admin-user-stat-label">VALOR</div></div>
+        <div class="admin-user-stat"><div class="admin-user-stat-value">${formatGold(user.totalValue)}</div><div class="admin-user-stat-label">VALOR</div></div>
       </div>
       <div class="admin-user-actions">
         ${user.status === 'pending' && !isSelf ? `
@@ -1145,21 +1279,10 @@ function renderAdminUsers(users) {
   });
 
   list.querySelectorAll('[data-action="delete-user"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const uid = btn.dataset.uid;
-      const user = adminAllUsers.find(u => u.uid === uid);
-      if (confirm(`Excluir "${user.displayName}"?`)) {
-        try {
-          const itemsSnap = await db.collection('users').doc(uid).collection('items').get();
-          const batch = db.batch();
-          itemsSnap.forEach(doc => batch.delete(doc.ref));
-          await batch.commit();
-          await db.collection('users').doc(uid).delete();
-          showToast(`"${user.displayName}" excluído.`, 'success');
-          loadAdminPanel();
-        } catch (err) { showToast('Erro: ' + err.message, 'error'); }
-      }
+      openDeleteReasonModal(uid);
     });
   });
 
@@ -1182,6 +1305,10 @@ async function openAdminUserDetail(uid) {
     const isSelf = uid === currentUser.uid;
 
     $('#admin-detail-avatar').textContent = (userData.displayName || 'P').charAt(0).toUpperCase();
+    // Show profile photo if available
+    if (userData.profilePhoto) {
+      $('#admin-detail-avatar').innerHTML = `<img src="${userData.profilePhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    }
     $('#admin-detail-name').innerHTML = userData.displayName + (isAdminUser ? ' <span class="admin-tag">ADMIN</span>' : '');
     $('#admin-detail-email').textContent = userData.email || '';
     const createdDate = userData.createdAt?.toDate();
@@ -1190,6 +1317,44 @@ async function openAdminUserDetail(uid) {
     $('#admin-delete-user-btn').style.display = (isSelf) ? 'none' : '';
     $('#admin-clear-inventory-btn').style.display = items.length === 0 ? 'none' : '';
 
+    // Show account info for admin
+    let accountInfoHtml = `
+      <div class="admin-detail-account-info">
+        <h4>INFORMAÇÕES DA CONTA</h4>
+        <div class="admin-account-info-grid">
+          <div class="admin-account-info-item">
+            <span class="admin-account-info-label">Email</span>
+            <span class="admin-account-info-value">${userData.email || '—'}</span>
+          </div>
+          <div class="admin-account-info-item">
+            <span class="admin-account-info-label">Telefone</span>
+            <span class="admin-account-info-value">${userData.phone || '—'}</span>
+          </div>
+          <div class="admin-account-info-item">
+            <span class="admin-account-info-label">ID do Jogo</span>
+            <span class="admin-account-info-value">${userData.gameId || '—'}</span>
+          </div>
+          <div class="admin-account-info-item">
+            <span class="admin-account-info-label">Status</span>
+            <span class="admin-account-info-value">${userData.status || '—'}</span>
+          </div>
+          <div class="admin-account-info-item">
+            <span class="admin-account-info-label">Tipo de Conta</span>
+            <span class="admin-account-info-value">${userData.role || 'user'}</span>
+          </div>
+          <div class="admin-account-info-item">
+            <span class="admin-account-info-label">Membro desde</span>
+            <span class="admin-account-info-value">${createdDate ? createdDate.toLocaleDateString('pt-BR') : '—'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+    // Insert account info before items header
+    const itemsHeader = $('#admin-user-modal').querySelector('.admin-detail-items-header');
+    const existingInfo = $('#admin-user-modal').querySelector('.admin-detail-account-info');
+    if (existingInfo) existingInfo.remove();
+    itemsHeader.insertAdjacentHTML('beforebegin', accountInfoHtml);
+
     const itemsContainer = $('#admin-detail-items');
     if (items.length === 0) {
       itemsContainer.innerHTML = '<div class="empty-state" style="padding:1.5rem"><p>Inventário vazio</p></div>';
@@ -1197,10 +1362,10 @@ async function openAdminUserDetail(uid) {
       itemsContainer.innerHTML = items.map(item => `
         <div class="admin-item-card">
           <button class="admin-item-delete" data-item-id="${item.id}">&times;</button>
-          ${item.photo ? `<img src="${item.photo}" alt="${item.name}">` : '<div style="height:70px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
+          ${item.photo ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true">` : '<div style="height:70px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
           <div class="admin-item-info">
             <div class="admin-item-name">${item.name}</div>
-            <div class="admin-item-price">${(item.price || 0).toLocaleString('pt-BR')}G</div>
+            <div class="admin-item-price">${formatGold(item.price)}</div>
           </div>
         </div>`).join('');
       itemsContainer.querySelectorAll('.admin-item-delete').forEach(btn => {
@@ -1216,26 +1381,20 @@ async function openAdminUserDetail(uid) {
           }
         });
       });
+      // Fullscreen image on click
+      itemsContainer.querySelectorAll('.skin-clickable-img').forEach(img => {
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showFullscreenImage(img.src);
+        });
+      });
     }
   } catch (err) { console.error(err); showToast('Erro ao carregar.', 'error'); }
 }
 
-$('#admin-delete-user-btn').addEventListener('click', async () => {
+$('#admin-delete-user-btn').addEventListener('click', () => {
   if (!adminCurrentTargetUid || !isAdmin()) return;
-  const user = adminAllUsers.find(u => u.uid === adminCurrentTargetUid);
-  if (!user) return;
-  if (confirm(`Excluir "${user.displayName}"?`)) {
-    try {
-      const itemsSnap = await db.collection('users').doc(adminCurrentTargetUid).collection('items').get();
-      const batch = db.batch();
-      itemsSnap.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
-      await db.collection('users').doc(adminCurrentTargetUid).delete();
-      showToast(`"${user.displayName}" excluído.`, 'success');
-      $('#admin-user-modal').classList.add('hidden');
-      loadAdminPanel();
-    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
-  }
+  openDeleteReasonModal(adminCurrentTargetUid);
 });
 
 $('#admin-clear-inventory-btn').addEventListener('click', async () => {
@@ -1251,6 +1410,67 @@ $('#admin-clear-inventory-btn').addEventListener('click', async () => {
       loadAdminPanel();
     } catch (err) { showToast('Erro.', 'error'); }
   }
+});
+
+// ============================================
+// DELETE USER WITH REASON
+// ============================================
+
+let deleteTargetUid = null;
+
+function openDeleteReasonModal(uid) {
+  deleteTargetUid = uid;
+  const user = adminAllUsers.find(u => u.uid === uid);
+  $('#delete-reason-username').textContent = user?.displayName || 'Usuário';
+  $('#delete-reason-text').value = '';
+  $('#delete-reason-modal').classList.remove('hidden');
+}
+
+$('#btn-confirm-delete-user').addEventListener('click', async () => {
+  if (!deleteTargetUid || !isAdmin()) return;
+  const reason = $('#delete-reason-text').value.trim();
+  if (!reason) {
+    showToast('Informe o motivo da exclusão.', 'error');
+    return;
+  }
+  const user = adminAllUsers.find(u => u.uid === deleteTargetUid);
+  try {
+    // Delete all user items (main + sub)
+    const itemsSnap = await db.collection('users').doc(deleteTargetUid).collection('items').get();
+    const subItemsSnap = await db.collection('users').doc(deleteTargetUid).collection('subItems').get();
+    const batch = db.batch();
+    itemsSnap.forEach(doc => batch.delete(doc.ref));
+    subItemsSnap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    // Save deletion record with reason
+    await db.collection('deletedUsers').add({
+      uid: deleteTargetUid,
+      displayName: user?.displayName || 'Unknown',
+      email: user?.email || '',
+      reason: reason,
+      deletedBy: currentUser.uid,
+      deletedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Delete user document
+    await db.collection('users').doc(deleteTargetUid).delete();
+
+    showToast(`"${user?.displayName}" excluído. Motivo: ${reason}`, 'success');
+    $('#delete-reason-modal').classList.add('hidden');
+    $('#admin-user-modal').classList.add('hidden');
+    deleteTargetUid = null;
+    loadAdminPanel();
+  } catch (err) {
+    showToast('Erro: ' + err.message, 'error');
+  }
+});
+
+$('#delete-reason-modal').querySelector('.modal-close').addEventListener('click', () => {
+  $('#delete-reason-modal').classList.add('hidden');
+});
+$('#delete-reason-modal').querySelector('.modal-overlay').addEventListener('click', () => {
+  $('#delete-reason-modal').classList.add('hidden');
 });
 
 $('#admin-search').addEventListener('input', (e) => {
@@ -1400,13 +1620,13 @@ $('#btn-save-raffle').addEventListener('click', async () => {
 // Update prize display
 $('#raffle-prize').addEventListener('input', () => {
   const prize = parseFloat($('#raffle-prize').value) || 0;
-  $('#raffle-prize-display').textContent = prize.toLocaleString('pt-BR') + 'G';
+  $('#raffle-prize-display').textContent = formatGold(prize);
   updateSpinButton();
 });
 
 function updateRaffleInfo() {
   const prize = parseFloat($('#raffle-prize').value) || 0;
-  $('#raffle-prize-display').textContent = prize.toLocaleString('pt-BR') + 'G';
+  $('#raffle-prize-display').textContent = formatGold(prize);
   $('#raffle-participants-count').textContent = selectedParticipants.length;
 }
 
@@ -1478,7 +1698,7 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
     
     // Show winner
     $('#winner-name').textContent = winner?.displayName || 'Player';
-    $('#winner-prize').textContent = prize.toLocaleString('pt-BR') + 'G';
+    $('#winner-prize').textContent = formatGold(prize);
     $('#raffle-winner').style.display = '';
 
     // Save result to Firestore
@@ -1495,6 +1715,14 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
       });
       showToast(`Parabéns ${winner?.displayName || 'Player'}!`, 'success');
       await loadRaffleHistory();
+
+      // Scroll to history section
+      setTimeout(() => {
+        const historyEl = $('#raffle-history');
+        if (historyEl) {
+          historyEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
     } catch (err) {
       showToast('Erro ao salvar resultado: ' + err.message, 'error');
     }
@@ -1536,7 +1764,7 @@ async function loadRaffleHistory() {
           </div>
           <div class="raffle-history-winner">
             <div class="raffle-history-winner-name">${raffle.winnerName || '—'}</div>
-            <div class="raffle-history-prize">${(raffle.prize || 0).toLocaleString('pt-BR')}G</div>
+            <div class="raffle-history-prize">${formatGold(raffle.prize)}</div>
           </div>
         </div>
       `;
@@ -1550,6 +1778,34 @@ async function loadRaffleHistory() {
 // ============================================
 // UTILITIES
 // ============================================
+
+function formatGold(value) {
+  const num = Number(value) || 0;
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'G';
+}
+
+function showFullscreenImage(src) {
+  const modal = $('#fullscreen-image-modal');
+  const img = $('#fullscreen-image');
+  img.src = src;
+  modal.classList.remove('hidden');
+}
+
+$('#fullscreen-image-modal').addEventListener('click', (e) => {
+  if (e.target.classList.contains('fullscreen-overlay') || e.target.classList.contains('fullscreen-close')) {
+    $('#fullscreen-image-modal').classList.add('hidden');
+  }
+});
+
+$('#fullscreen-image-modal .fullscreen-close').addEventListener('click', () => {
+  $('#fullscreen-image-modal').classList.add('hidden');
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    $('#fullscreen-image-modal')?.classList.add('hidden');
+  }
+});
 
 function showToast(message, type = 'success') {
   const container = $('#toast-container');
