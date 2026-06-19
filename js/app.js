@@ -116,6 +116,11 @@ $('#register-form').addEventListener('submit', async (e) => {
       gameId: gameId,
       status: 'pending',
       role: 'user',
+      itemCount: 0,
+      totalValue: 0,
+      subItemCount: 0,
+      subValue: 0,
+      totalCombined: 0,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     showToast('Conta criada! Aguarde aprovação.', 'success');
@@ -139,6 +144,11 @@ auth.onAuthStateChanged(async (user) => {
           gameId: '',
           status: isAdminUser ? 'approved' : 'pending',
           role: isAdminUser ? 'admin' : 'user',
+          itemCount: 0,
+          totalValue: 0,
+          subItemCount: 0,
+          subValue: 0,
+          totalCombined: 0,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         currentUserData = (await db.collection('users').doc(user.uid).get()).data();
@@ -767,6 +777,49 @@ function updateInventoryStats() {
   $('#stat-items').textContent = totalItems;
   $('#stat-value').textContent = formatGold(totalValue);
   $('#stat-sub-value').textContent = formatGold(subValue);
+  
+  // Update user document with totals for fast loading in other pages
+  updateUserData(totalItems, totalValue, subInventoryItems.length, subValue);
+}
+
+async function updateUserData(itemCount, totalValue, subItemCount, subValue) {
+  if (!currentUser) return;
+  try {
+    await db.collection('users').doc(currentUser.uid).update({
+      itemCount,
+      totalValue,
+      subItemCount,
+      subValue,
+      totalCombined: totalValue + subValue
+    });
+  } catch (err) {
+    console.error('Error updating user data:', err);
+  }
+}
+
+async function updateAnyUserData(uid) {
+  try {
+    const [itemsSnap, subItemsSnap] = await Promise.all([
+      db.collection('users').doc(uid).collection('items').get(),
+      db.collection('users').doc(uid).collection('subItems').get()
+    ]);
+    
+    let totalValue = 0, itemCount = 0;
+    itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
+    
+    let subValue = 0, subItemCount = 0;
+    subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
+    
+    await db.collection('users').doc(uid).update({
+      itemCount,
+      totalValue,
+      subItemCount,
+      subValue,
+      totalCombined: totalValue + subValue
+    });
+  } catch (err) {
+    console.error('Error updating user data:', err);
+  }
 }
 
 function renderInventory() {
@@ -920,35 +973,6 @@ $$('.modal-overlay').forEach(overlay => {
 });
 
 // ============================================
-// BATCH UTILITY — processa promises em lotes
-// ============================================
-
-async function processInBatches(items, batchSize, fn) {
-  const results = [];
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-    const batchResults = await Promise.all(batch.map(fn));
-    results.push(...batchResults);
-  }
-  return results;
-}
-
-async function fetchUserInventoryCounts(uid) {
-  const [itemsSnap, subItemsSnap] = await Promise.all([
-    db.collection('users').doc(uid).collection('items').get(),
-    db.collection('users').doc(uid).collection('subItems').get()
-  ]);
-  
-  let totalValue = 0, itemCount = 0;
-  itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
-  
-  let subValue = 0, subItemCount = 0;
-  subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
-  
-  return { itemCount, totalValue, subItemCount, subValue };
-}
-
-// ============================================
 // PLAYERS
 // ============================================
 
@@ -957,23 +981,20 @@ async function loadPlayers() {
   grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando jogadores...</p></div>';
   try {
     const snapshot = await db.collection('users').get();
-    const docs = snapshot.docs.filter(doc => doc.id !== currentUser.uid);
-    
-    // Process in batches of 10 to avoid overwhelming Firestore
-    allUsers = await processInBatches(docs, 10, async (doc) => {
-      const userData = doc.data();
-      const counts = await fetchUserInventoryCounts(doc.id);
-      
-      return {
-        uid: doc.id, displayName: userData.displayName || 'Player',
-        gameId: userData.gameId || '', phone: userData.phone || '',
-        createdAt: userData.createdAt,
-        itemCount: counts.itemCount, totalValue: counts.totalValue,
-        subItemCount: counts.subItemCount, subValue: counts.subValue,
-        isAdmin: userData.role === 'admin',
-        profilePhoto: userData.profilePhoto || null
-      };
-    });
+    allUsers = snapshot.docs
+      .filter(doc => doc.id !== currentUser.uid)
+      .map(doc => {
+        const userData = doc.data();
+        return {
+          uid: doc.id, displayName: userData.displayName || 'Player',
+          gameId: userData.gameId || '', phone: userData.phone || '',
+          createdAt: userData.createdAt,
+          itemCount: userData.itemCount || 0, totalValue: userData.totalValue || 0,
+          subItemCount: userData.subItemCount || 0, subValue: userData.subValue || 0,
+          isAdmin: userData.role === 'admin',
+          profilePhoto: userData.profilePhoto || null
+        };
+      });
     
     renderPlayers(allUsers);
   } catch (err) {
@@ -1097,17 +1118,15 @@ async function loadRanking() {
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando ranking...</p></div>';
   try {
     const snapshot = await db.collection('users').get();
-    
-    // Process in batches of 10 to avoid overwhelming Firestore
-    const rankings = await processInBatches(snapshot.docs, 10, async (doc) => {
+    const rankings = snapshot.docs.map(doc => {
       const userData = doc.data();
-      const counts = await fetchUserInventoryCounts(doc.id);
-      
+      const totalValue = userData.totalValue || 0;
+      const subValue = userData.subValue || 0;
       return {
         uid: doc.id, displayName: userData.displayName || 'Player',
-        itemCount: counts.itemCount, subItemCount: counts.subItemCount,
-        totalValue: counts.totalValue, subValue: counts.subValue,
-        totalCombined: counts.totalValue + counts.subValue,
+        itemCount: userData.itemCount || 0, subItemCount: userData.subItemCount || 0,
+        totalValue, subValue,
+        totalCombined: totalValue + subValue,
         isAdmin: userData.role === 'admin',
         isCurrentUser: doc.id === currentUser.uid
       };
@@ -1207,18 +1226,16 @@ async function loadAdminPanel() {
   list.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando usuários...</p></div>';
   try {
     const snapshot = await db.collection('users').get();
-    
-    // Process in batches of 10 to avoid overwhelming Firestore
-    adminAllUsers = await processInBatches(snapshot.docs, 10, async (doc) => {
+    adminAllUsers = snapshot.docs.map(doc => {
       const userData = doc.data();
-      const counts = await fetchUserInventoryCounts(doc.id);
-      
+      const totalValue = userData.totalValue || 0;
+      const subValue = userData.subValue || 0;
       return {
         uid: doc.id, displayName: userData.displayName || 'Player',
         email: userData.email || '', gameId: userData.gameId || '', phone: userData.phone || '',
-        itemCount: counts.itemCount, totalValue: counts.totalValue,
-        subItemCount: counts.subItemCount, subValue: counts.subValue,
-        totalCombined: counts.totalValue + counts.subValue,
+        itemCount: userData.itemCount || 0, totalValue,
+        subItemCount: userData.subItemCount || 0, subValue,
+        totalCombined: totalValue + subValue,
         role: userData.role || 'user',
         status: userData.status || 'pending',
         createdAt: userData.createdAt,
@@ -1440,6 +1457,7 @@ async function openAdminUserDetail(uid) {
           if (confirm('Remover este item?')) {
             try {
               await db.collection('users').doc(uid).collection('items').doc(btn.dataset.itemId).delete();
+              await updateAnyUserData(uid);
               showToast('Item removido.', 'success');
               openAdminUserDetail(uid);
               loadAdminPanel();
@@ -1471,6 +1489,7 @@ $('#admin-clear-inventory-btn').addEventListener('click', async () => {
       const batch = db.batch();
       itemsSnap.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
+      await updateAnyUserData(adminCurrentTargetUid);
       showToast('Inventário limpo.', 'success');
       openAdminUserDetail(adminCurrentTargetUid);
       loadAdminPanel();
