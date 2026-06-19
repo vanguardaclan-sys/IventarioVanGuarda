@@ -1786,38 +1786,21 @@ function formatGold(value) {
 
 function parseGold(value) {
   if (!value) return 0;
-  // Remove formatting and parse
-  const normalized = String(value).replace(/\./g, '').replace(',', '.');
-  const num = parseFloat(normalized);
+  let str = String(value).trim();
+  if (!str) return 0;
+  // Remove dots (thousands separator) then replace comma with dot (decimal)
+  str = str.replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(str);
   return isNaN(num) ? 0 : num;
 }
 
-// Auto-format currency input as user types
-function formatCurrencyInput(input) {
-  // Remove all non-digits
-  let digits = input.value.replace(/\D/g, '');
-  
-  // If empty, show empty
-  if (!digits) {
-    input.value = '';
-    return;
-  }
-  
-  // Convert to number with 2 decimal places
-  const num = parseInt(digits, 10) / 100;
-  
-  // Format with Brazilian locale
-  input.value = num.toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
-
-// Apply mask to all price inputs
+// Allow digits, dots and commas on price inputs
 ['#item-price', '#edit-item-price', '#sell-item-price', '#raffle-prize'].forEach(sel => {
   const el = $(sel);
   if (el) {
-    el.addEventListener('input', () => formatCurrencyInput(el));
+    el.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/[^0-9.,]/g, '');
+    });
   }
 });
 
