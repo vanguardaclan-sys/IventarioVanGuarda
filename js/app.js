@@ -493,7 +493,7 @@ photoInput.addEventListener('change', (e) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX = 400;
+      const MAX = 1920;
       let w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -501,7 +501,7 @@ photoInput.addEventListener('change', (e) => {
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.95);
       photoPreview.src = currentPhotoBase64;
       photoPreview.style.display = 'block';
       photoPlaceholder.style.display = 'none';
@@ -521,6 +521,7 @@ function resetPhotoUpload() {
 
 $('#add-item-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const inventory = $('#item-inventory').value;
   const category = $('#item-category').value;
   const weapon = $('#item-weapon').value;
   const name = $('#item-name').value.trim();
@@ -535,8 +536,17 @@ $('#add-item-form').addEventListener('submit', async (e) => {
   };
 
   try {
-    await db.collection('users').doc(currentUser.uid).collection('items').add(item);
-    showToast(`"${name}" adicionado!`, 'success');
+    if (inventory === 'sub') {
+      // Add to sub-inventory
+      item.soldAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('users').doc(currentUser.uid).collection('subItems').add(item);
+      showToast(`"${name}" adicionado ao sub-inventário!`, 'success');
+    } else {
+      // Add to main inventory
+      await db.collection('users').doc(currentUser.uid).collection('items').add(item);
+      showToast(`"${name}" adicionado!`, 'success');
+    }
+    
     $('#add-item-form').reset();
     $('#weapon-group').style.display = 'none';
     $('#skin-name-group').style.display = 'none';
@@ -592,7 +602,7 @@ editPhotoInput.addEventListener('change', (e) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX = 400;
+      const MAX = 1920;
       let w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -600,7 +610,7 @@ editPhotoInput.addEventListener('change', (e) => {
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      editPhotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      editPhotoBase64 = canvas.toDataURL('image/jpeg', 0.95);
       editPhotoPreview.src = editPhotoBase64;
       editPhotoPreview.style.display = 'block';
       editPhotoPlaceholder.style.display = 'none';

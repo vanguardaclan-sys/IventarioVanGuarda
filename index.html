@@ -549,12 +549,26 @@
       <h3 class="modal-title">ADICIONAR ITEM</h3>
       <form id="add-item-form">
         <!-- Step 1: Category -->
-        <div class="form-group">
-          <label>Categoria</label>
-          <select id="item-category" required>
-            <option value="">Selecionar categoria...</option>
-          </select>
-        </div>
+          <div class="form-group">
+            <label>Inventário</label>
+            <select id="item-inventory" required>
+              <option value="main">Inventário Principal</option>
+              <option value="sub">Sub-Inventário (Vendidos)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Categoria</label>
+            <select id="item-category" required>
+              <option value="">Selecione</option>
+              <option value="KNIFE">Faca</option>
+              <option value="GLOVES">Luvas</option>
+              <option value="RIFLE">Rifle</option>
+              <option value="PISTOL">Pistola</option>
+              <option value="SMG">SMG</option>
+              <option value="SNIPER">Sniper</option>
+              <option value="SHOTGUN">Shotgun</option>
+            </select>
+          </div>
         <!-- Step 2: Weapon/Item -->
         <div class="form-group" id="weapon-group" style="display:none;">
           <label>Arma / Item</label>
