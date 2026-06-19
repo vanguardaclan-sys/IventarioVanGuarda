@@ -826,9 +826,9 @@ function createSubItemCard(item) {
 
   return `
     <div class="sub-item-card">
+      <div class="item-card-image">${imageHtml}</div>
       <div class="item-sold-badge">VENDIDO</div>
       <button class="sub-item-delete" data-action="delete-sub" data-id="${item.id}" title="Excluir">&times;</button>
-      <div class="item-card-image">${imageHtml}</div>
       <div class="item-card-info">
         <div class="item-card-category">${item.category || ''}</div>
         <div class="item-card-name" title="${item.name}">${item.name}</div>
@@ -949,12 +949,6 @@ async function loadPlayers() {
     console.error('Error loading players:', err);
     grid.innerHTML = '<div class="empty-state"><p>Erro ao carregar jogadores</p></div>';
     showToast('Erro ao carregar jogadores.', 'error');
-  }
-}
-    renderPlayers(allUsers);
-  } catch (err) {
-    console.error(err);
-    grid.innerHTML = '<div class="empty-state"><p>Erro ao carregar</p></div>';
   }
 }
 
@@ -1104,13 +1098,6 @@ async function loadRanking() {
     showToast('Erro ao carregar ranking.', 'error');
   }
 }
-    rankings.sort((a, b) => b.totalCombined - a.totalCombined);
-    renderRanking(rankings);
-  } catch (err) {
-    console.error(err);
-    container.innerHTML = '<div class="empty-state"><p>Erro ao carregar</p></div>';
-  }
-}
 
 function renderRanking(rankings) {
   const container = $('#ranking-container');
@@ -1235,15 +1222,6 @@ async function loadAdminPanel() {
     console.error('Error loading admin panel:', err);
     list.innerHTML = '<div class="empty-state"><p>Erro ao carregar painel admin</p></div>';
     showToast('Erro ao carregar painel admin.', 'error');
-  }
-}
-    $('#admin-stat-users').textContent = adminAllUsers.length;
-    $('#admin-stat-items').textContent = globalItems;
-    $('#admin-stat-value').textContent = formatGold(globalValue);
-    renderAdminUsers(adminAllUsers);
-  } catch (err) {
-    console.error(err);
-    list.innerHTML = '<div class="empty-state"><p>Erro ao carregar</p></div>';
   }
 }
 
