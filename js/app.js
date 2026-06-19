@@ -959,8 +959,8 @@ async function loadPlayers() {
     const snapshot = await db.collection('users').get();
     const docs = snapshot.docs.filter(doc => doc.id !== currentUser.uid);
     
-    // Process in batches of 5 to avoid overwhelming Firestore
-    allUsers = await processInBatches(docs, 5, async (doc) => {
+    // Process in batches of 10 to avoid overwhelming Firestore
+    allUsers = await processInBatches(docs, 10, async (doc) => {
       const userData = doc.data();
       const counts = await fetchUserInventoryCounts(doc.id);
       
@@ -1098,8 +1098,8 @@ async function loadRanking() {
   try {
     const snapshot = await db.collection('users').get();
     
-    // Process in batches of 5 to avoid overwhelming Firestore
-    const rankings = await processInBatches(snapshot.docs, 5, async (doc) => {
+    // Process in batches of 10 to avoid overwhelming Firestore
+    const rankings = await processInBatches(snapshot.docs, 10, async (doc) => {
       const userData = doc.data();
       const counts = await fetchUserInventoryCounts(doc.id);
       
@@ -1208,8 +1208,8 @@ async function loadAdminPanel() {
   try {
     const snapshot = await db.collection('users').get();
     
-    // Process in batches of 5 to avoid overwhelming Firestore
-    adminAllUsers = await processInBatches(snapshot.docs, 5, async (doc) => {
+    // Process in batches of 10 to avoid overwhelming Firestore
+    adminAllUsers = await processInBatches(snapshot.docs, 10, async (doc) => {
       const userData = doc.data();
       const counts = await fetchUserInventoryCounts(doc.id);
       
