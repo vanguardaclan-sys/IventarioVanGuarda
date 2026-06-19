@@ -1040,8 +1040,28 @@ $('#search-players').addEventListener('input', (e) => {
 
 async function openPlayerProfile(uid) {
   const modal = $('#player-modal');
+  
+  // Limpar conteúdo anterior e mostrar loading animado
+  const loadingHtml = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;gap:1rem;">
+      <div style="width:50px;height:50px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+      <p style="color:var(--text-secondary);font-size:0.9rem;animation:pulse 1.5s ease-in-out infinite;">Carregando inventário...</p>
+    </div>
+  `;
+  
+  $('#profile-avatar').textContent = '?';
+  $('#profile-name').textContent = 'Carregando...';
+  $('#profile-since').textContent = '';
+  $('#profile-items').textContent = '0';
+  $('#profile-value').textContent = '0G';
+  $('#profile-inventory').innerHTML = loadingHtml;
+  
   modal.classList.remove('hidden');
+  
   try {
+    // Delay mínimo para mostrar o loading (melhora UX)
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
     const userDoc = await db.collection('users').doc(uid).get();
     const userData = userDoc.data();
     
@@ -1801,13 +1821,24 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
       showToast(`Parabéns ${winner?.displayName || 'Player'}!`, 'success');
       await loadRaffleHistory();
 
-      // Scroll to history section
+      // Reset roulette after showing winner
       setTimeout(() => {
+        // Reset wheel rotation
+        wheel.classList.remove('spinning');
+        wheel.style.transform = 'rotate(0deg)';
+        
+        // Clear selections
+        selectedParticipants = [];
+        renderParticipantsList($('#participants-search').value);
+        updateSelectedCount();
+        updateSpinButton();
+        
+        // Scroll to history section
         const historyEl = $('#raffle-history');
         if (historyEl) {
           historyEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 300);
+      }, 2000);
     } catch (err) {
       showToast('Erro ao salvar resultado: ' + err.message, 'error');
     }
