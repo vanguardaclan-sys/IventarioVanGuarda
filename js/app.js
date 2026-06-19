@@ -920,6 +920,35 @@ $$('.modal-overlay').forEach(overlay => {
 });
 
 // ============================================
+// BATCH UTILITY — processa promises em lotes
+// ============================================
+
+async function processInBatches(items, batchSize, fn) {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
+}
+
+async function fetchUserInventoryCounts(uid) {
+  const [itemsSnap, subItemsSnap] = await Promise.all([
+    db.collection('users').doc(uid).collection('items').get(),
+    db.collection('users').doc(uid).collection('subItems').get()
+  ]);
+  
+  let totalValue = 0, itemCount = 0;
+  itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
+  
+  let subValue = 0, subItemCount = 0;
+  subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
+  
+  return { itemCount, totalValue, subItemCount, subValue };
+}
+
+// ============================================
 // PLAYERS
 // ============================================
 
@@ -928,36 +957,24 @@ async function loadPlayers() {
   grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando jogadores...</p></div>';
   try {
     const snapshot = await db.collection('users').get();
+    const docs = snapshot.docs.filter(doc => doc.id !== currentUser.uid);
     
-    // Parallelize all user inventory queries
-    const userPromises = snapshot.docs
-      .filter(doc => doc.id !== currentUser.uid)
-      .map(async (doc) => {
-        const userData = doc.data();
-        
-        // Fetch main inventory and sub-inventory in parallel
-        const [itemsSnap, subItemsSnap] = await Promise.all([
-          db.collection('users').doc(doc.id).collection('items').get(),
-          db.collection('users').doc(doc.id).collection('subItems').get()
-        ]);
-        
-        let totalValue = 0, itemCount = 0;
-        itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
-        
-        let subValue = 0, subItemCount = 0;
-        subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
-        
-        return {
-          uid: doc.id, displayName: userData.displayName || 'Player',
-          gameId: userData.gameId || '', phone: userData.phone || '',
-          createdAt: userData.createdAt, itemCount, totalValue,
-          subItemCount, subValue,
-          isAdmin: userData.role === 'admin',
-          profilePhoto: userData.profilePhoto || null
-        };
-      });
+    // Process in batches of 5 to avoid overwhelming Firestore
+    allUsers = await processInBatches(docs, 5, async (doc) => {
+      const userData = doc.data();
+      const counts = await fetchUserInventoryCounts(doc.id);
+      
+      return {
+        uid: doc.id, displayName: userData.displayName || 'Player',
+        gameId: userData.gameId || '', phone: userData.phone || '',
+        createdAt: userData.createdAt,
+        itemCount: counts.itemCount, totalValue: counts.totalValue,
+        subItemCount: counts.subItemCount, subValue: counts.subValue,
+        isAdmin: userData.role === 'admin',
+        profilePhoto: userData.profilePhoto || null
+      };
+    });
     
-    allUsers = await Promise.all(userPromises);
     renderPlayers(allUsers);
   } catch (err) {
     console.error('Error loading players:', err);
@@ -1081,32 +1098,21 @@ async function loadRanking() {
   try {
     const snapshot = await db.collection('users').get();
     
-    // Parallelize all user inventory queries
-    const userPromises = snapshot.docs.map(async (doc) => {
+    // Process in batches of 5 to avoid overwhelming Firestore
+    const rankings = await processInBatches(snapshot.docs, 5, async (doc) => {
       const userData = doc.data();
-      
-      // Fetch main inventory and sub-inventory in parallel for each user
-      const [itemsSnap, subItemsSnap] = await Promise.all([
-        db.collection('users').doc(doc.id).collection('items').get(),
-        db.collection('users').doc(doc.id).collection('subItems').get()
-      ]);
-      
-      let totalValue = 0, itemCount = 0;
-      itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
-      
-      let subValue = 0, subItemCount = 0;
-      subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
+      const counts = await fetchUserInventoryCounts(doc.id);
       
       return {
         uid: doc.id, displayName: userData.displayName || 'Player',
-        itemCount, subItemCount, totalValue, subValue,
-        totalCombined: totalValue + subValue,
+        itemCount: counts.itemCount, subItemCount: counts.subItemCount,
+        totalValue: counts.totalValue, subValue: counts.subValue,
+        totalCombined: counts.totalValue + counts.subValue,
         isAdmin: userData.role === 'admin',
         isCurrentUser: doc.id === currentUser.uid
       };
     });
     
-    const rankings = await Promise.all(userPromises);
     rankings.sort((a, b) => b.totalCombined - a.totalCombined);
     renderRanking(rankings);
   } catch (err) {
@@ -1202,36 +1208,23 @@ async function loadAdminPanel() {
   try {
     const snapshot = await db.collection('users').get();
     
-    // Parallelize all user inventory queries
-    const userPromises = snapshot.docs.map(async (doc) => {
+    // Process in batches of 5 to avoid overwhelming Firestore
+    adminAllUsers = await processInBatches(snapshot.docs, 5, async (doc) => {
       const userData = doc.data();
+      const counts = await fetchUserInventoryCounts(doc.id);
       
-      // Fetch main inventory and sub-inventory in parallel for each user
-      const [itemsSnap, subItemsSnap] = await Promise.all([
-        db.collection('users').doc(doc.id).collection('items').get(),
-        db.collection('users').doc(doc.id).collection('subItems').get()
-      ]);
-      
-      let totalValue = 0, itemCount = 0;
-      itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
-
-      let subValue = 0, subItemCount = 0;
-      subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
-
       return {
         uid: doc.id, displayName: userData.displayName || 'Player',
         email: userData.email || '', gameId: userData.gameId || '', phone: userData.phone || '',
-        itemCount, totalValue,
-        subItemCount, subValue,
-        totalCombined: totalValue + subValue,
+        itemCount: counts.itemCount, totalValue: counts.totalValue,
+        subItemCount: counts.subItemCount, subValue: counts.subValue,
+        totalCombined: counts.totalValue + counts.subValue,
         role: userData.role || 'user',
         status: userData.status || 'pending',
         createdAt: userData.createdAt,
         profilePhoto: userData.profilePhoto || null
       };
     });
-    
-    adminAllUsers = await Promise.all(userPromises);
     
     let globalItems = 0, globalValue = 0;
     adminAllUsers.forEach(u => {
