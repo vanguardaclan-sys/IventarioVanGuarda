@@ -2,6 +2,17 @@
 // SKINVANGUARDA — Standoff 2 Inventory Tracker
 // ============================================
 
+// Global error handler
+window.addEventListener('error', (e) => {
+  console.error('Erro global:', e.error);
+  showToast('Ocorreu um erro. Recarregue a página se necessário.', 'error');
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('Promise rejeitada:', e.reason);
+  showToast('Ocorreu um erro. Recarregue a página se necessário.', 'error');
+});
+
 const ADMIN_EMAIL = 'ssantosmattheuss@gmail.com';
 
 function isAdmin() {
@@ -114,58 +125,63 @@ $('#register-form').addEventListener('submit', async (e) => {
 });
 
 auth.onAuthStateChanged(async (user) => {
-  if (user) {
-    currentUser = user;
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    const isAdminUser = user.email === ADMIN_EMAIL;
+  try {
+    if (user) {
+      currentUser = user;
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      const isAdminUser = user.email === ADMIN_EMAIL;
 
-    if (!userDoc.exists) {
-      await db.collection('users').doc(user.uid).set({
-        displayName: user.displayName || (isAdminUser ? 'Admin' : 'Player'),
-        email: user.email,
-        phone: '',
-        gameId: '',
-        status: isAdminUser ? 'approved' : 'pending',
-        role: isAdminUser ? 'admin' : 'user',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      currentUserData = (await db.collection('users').doc(user.uid).get()).data();
+      if (!userDoc.exists) {
+        await db.collection('users').doc(user.uid).set({
+          displayName: user.displayName || (isAdminUser ? 'Admin' : 'Player'),
+          email: user.email,
+          phone: '',
+          gameId: '',
+          status: isAdminUser ? 'approved' : 'pending',
+          role: isAdminUser ? 'admin' : 'user',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        currentUserData = (await db.collection('users').doc(user.uid).get()).data();
+      } else {
+        currentUserData = userDoc.data();
+        if (isAdminUser && currentUserData.role !== 'admin') {
+          await db.collection('users').doc(user.uid).update({ role: 'admin', status: 'approved' });
+          currentUserData.role = 'admin';
+          currentUserData.status = 'approved';
+        }
+      }
+
+      if (!isAdminUser) {
+        if (currentUserData.status === 'pending') {
+          showPending();
+          return;
+        }
+        if (currentUserData.status === 'rejected') {
+          showToast('Sua conta foi rejeitada.', 'error');
+          setTimeout(() => auth.signOut(), 1000);
+          return;
+        }
+      }
+
+      showApp();
+
+      const adminNav = $('#nav-admin');
+      const mobileAdminNav = $('#mobile-nav-admin');
+      if (isAdmin()) {
+        adminNav.style.display = '';
+        mobileAdminNav.style.display = '';
+      } else {
+        adminNav.style.display = 'none';
+        mobileAdminNav.style.display = 'none';
+      }
     } else {
-      currentUserData = userDoc.data();
-      if (isAdminUser && currentUserData.role !== 'admin') {
-        await db.collection('users').doc(user.uid).update({ role: 'admin', status: 'approved' });
-        currentUserData.role = 'admin';
-        currentUserData.status = 'approved';
-      }
+      currentUser = null;
+      currentUserData = null;
+      showAuth();
     }
-
-    if (!isAdminUser) {
-      if (currentUserData.status === 'pending') {
-        showPending();
-        return;
-      }
-      if (currentUserData.status === 'rejected') {
-        showToast('Sua conta foi rejeitada.', 'error');
-        auth.signOut();
-        return;
-      }
-    }
-
-    showApp();
-
-    const adminNav = $('#nav-admin');
-    const mobileAdminNav = $('#mobile-nav-admin');
-    if (isAdmin()) {
-      adminNav.style.display = '';
-      mobileAdminNav.style.display = '';
-    } else {
-      adminNav.style.display = 'none';
-      mobileAdminNav.style.display = 'none';
-    }
-  } else {
-    currentUser = null;
-    currentUserData = null;
-    showAuth();
+  } catch (err) {
+    console.error('Erro no onAuthStateChanged:', err);
+    showToast('Erro ao carregar. Tente novamente.', 'error');
   }
 });
 
@@ -538,6 +554,7 @@ $('#add-item-form').addEventListener('submit', async (e) => {
   try {
     if (inventory === 'sub') {
       // Add to sub-inventory
+      item.soldPrice = price;
       item.soldAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('users').doc(currentUser.uid).collection('subItems').add(item);
       showToast(`"${name}" adicionado ao sub-inventário!`, 'success');
@@ -728,6 +745,7 @@ async function loadInventory() {
     renderSubInventory();
   } catch (err) {
     console.error('Error loading inventory:', err);
+    showToast('Erro ao carregar inventário.', 'error');
   }
 }
 
@@ -897,10 +915,11 @@ $$('.modal-overlay').forEach(overlay => {
 
 async function loadPlayers() {
   const grid = $('#players-grid');
-  grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando...</p></div>';
+  grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando jogadores...</p></div>';
   try {
-    const snapshot = await db.collection('users').where('status', '==', 'approved').get();
+    const snapshot = await db.collection('users').get();
     allUsers = [];
+    
     for (const doc of snapshot.docs) {
       if (doc.id === currentUser.uid) continue;
       const userData = doc.data();
@@ -924,6 +943,14 @@ async function loadPlayers() {
         profilePhoto: userData.profilePhoto || null
       });
     }
+    
+    renderPlayers(allUsers);
+  } catch (err) {
+    console.error('Error loading players:', err);
+    grid.innerHTML = '<div class="empty-state"><p>Erro ao carregar jogadores</p></div>';
+    showToast('Erro ao carregar jogadores.', 'error');
+  }
+}
     renderPlayers(allUsers);
   } catch (err) {
     console.error(err);
@@ -1042,31 +1069,41 @@ async function openPlayerProfile(uid) {
 
 async function loadRanking() {
   const container = $('#ranking-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando...</p></div>';
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando ranking...</p></div>';
   try {
-    const snapshot = await db.collection('users').where('status', '==', 'approved').get();
+    const snapshot = await db.collection('users').get();
     const rankings = [];
+    
     for (const doc of snapshot.docs) {
       const userData = doc.data();
       
-      // Main inventory
+      // Get main inventory
       const itemsSnap = await db.collection('users').doc(doc.id).collection('items').get();
       let totalValue = 0, itemCount = 0;
       itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
       
-      // Sub-inventory
+      // Get sub-inventory
       const subItemsSnap = await db.collection('users').doc(doc.id).collection('subItems').get();
       let subValue = 0, subItemCount = 0;
       subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
       
       rankings.push({
         uid: doc.id, displayName: userData.displayName || 'Player',
-        itemCount, totalValue, subItemCount, subValue,
+        itemCount, subItemCount, totalValue, subValue,
         totalCombined: totalValue + subValue,
-        isCurrentUser: doc.id === currentUser.uid,
-        isAdmin: userData.role === 'admin'
+        isAdmin: userData.role === 'admin',
+        isCurrentUser: doc.id === currentUser.uid
       });
     }
+    
+    rankings.sort((a, b) => b.totalCombined - a.totalCombined);
+    renderRanking(rankings);
+  } catch (err) {
+    console.error('Error loading ranking:', err);
+    container.innerHTML = '<div class="empty-state"><p>Erro ao carregar ranking</p></div>';
+    showToast('Erro ao carregar ranking.', 'error');
+  }
+}
     rankings.sort((a, b) => b.totalCombined - a.totalCombined);
     renderRanking(rankings);
   } catch (err) {
@@ -1157,7 +1194,7 @@ let adminCurrentTargetUid = null;
 async function loadAdminPanel() {
   if (!isAdmin()) return;
   const list = $('#admin-users-list');
-  list.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando...</p></div>';
+  list.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando usuários...</p></div>';
   try {
     const snapshot = await db.collection('users').get();
     adminAllUsers = [];
@@ -1168,18 +1205,38 @@ async function loadAdminPanel() {
       const itemsSnap = await db.collection('users').doc(doc.id).collection('items').get();
       let totalValue = 0, itemCount = 0;
       itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
-      
+
+      const subItemsSnap = await db.collection('users').doc(doc.id).collection('subItems').get();
+      let subValue = 0, subItemCount = 0;
+      subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
+
+      globalItems += itemCount + subItemCount;
+      globalValue += totalValue + subValue;
+
       adminAllUsers.push({
         uid: doc.id, displayName: userData.displayName || 'Player',
-        email: userData.email || '', phone: userData.phone || '',
-        gameId: userData.gameId || '',
-        createdAt: userData.createdAt,
-        itemCount, totalValue,
+        email: userData.email || '', itemCount, totalValue,
+        subItemCount, subValue,
+        totalCombined: totalValue + subValue,
+        role: userData.role || 'user',
         status: userData.status || 'pending',
-        role: userData.role || 'user'
+        createdAt: userData.createdAt
       });
-      if (userData.status === 'approved') { globalItems += itemCount; globalValue += totalValue; }
     }
+
+    adminAllUsers.sort((a, b) => b.totalCombined - a.totalCombined);
+
+    $('#admin-stat-users').textContent = adminAllUsers.length;
+    $('#admin-stat-items').textContent = globalItems;
+    $('#admin-stat-value').textContent = formatGold(globalValue);
+
+    renderAdminUsers(adminAllUsers);
+  } catch (err) {
+    console.error('Error loading admin panel:', err);
+    list.innerHTML = '<div class="empty-state"><p>Erro ao carregar painel admin</p></div>';
+    showToast('Erro ao carregar painel admin.', 'error');
+  }
+}
     $('#admin-stat-users').textContent = adminAllUsers.length;
     $('#admin-stat-items').textContent = globalItems;
     $('#admin-stat-value').textContent = formatGold(globalValue);

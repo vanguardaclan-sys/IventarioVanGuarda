@@ -1783,7 +1783,7 @@ body {
   cursor: pointer;
   font-size: 0.85rem;
   z-index: 3;
-  opacity: 0;
+  opacity: 1;
   transition: var(--transition);
 }
 
