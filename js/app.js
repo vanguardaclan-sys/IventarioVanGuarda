@@ -2037,20 +2037,22 @@ async function loadRaffleHistory() {
   
   try {
     const snapshot = await db.collection('raffles')
-      .where('status', '==', 'completed')
       .orderBy('completedAt', 'desc')
       .limit(10)
       .get();
 
-    if (snapshot.empty) {
+    const history = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.status === 'completed') {
+        history.push({ id: doc.id, ...data });
+      }
+    });
+
+    if (history.length === 0) {
       historyContainer.innerHTML = '<div class="empty-state"><p>Nenhum sorteio realizado ainda</p></div>';
       return;
     }
-
-    const history = [];
-    snapshot.forEach(doc => {
-      history.push({ id: doc.id, ...doc.data() });
-    });
 
     historyContainer.innerHTML = history.map(raffle => {
       const date = raffle.completedAt?.toDate();
