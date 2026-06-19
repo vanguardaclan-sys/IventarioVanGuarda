@@ -524,7 +524,7 @@ $('#add-item-form').addEventListener('submit', async (e) => {
   const category = $('#item-category').value;
   const weapon = $('#item-weapon').value;
   const name = $('#item-name').value.trim();
-  const price = parseFloat($('#item-price').value) || 0;
+  const price = parseGold($('#item-price').value);
 
   if (!category || !weapon || !name) { showToast('Preencha todos os campos.', 'error'); return; }
 
@@ -613,7 +613,7 @@ editPhotoInput.addEventListener('change', (e) => {
 $('#edit-item-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = $('#edit-item-name').value.trim();
-  const price = parseFloat($('#edit-item-price').value) || 0;
+  const price = parseGold($('#edit-item-price').value);
 
   try {
     await db.collection('users').doc(currentUser.uid).collection('items').doc(editingItemId).update({
@@ -652,7 +652,7 @@ function openSellModal(item) {
 
 $('#sell-item-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const sellPrice = parseFloat($('#sell-item-price').value) || 0;
+  const sellPrice = parseGold($('#sell-item-price').value);
 
   try {
     // Move to sub-inventory with sold price
@@ -1560,7 +1560,7 @@ function updateSelectedCount() {
 
 function updateSpinButton() {
   const spinBtn = $('#btn-spin-raffle');
-  const prize = parseFloat($('#raffle-prize').value) || 0;
+  const prize = parseGold($('#raffle-prize').value);
   spinBtn.disabled = selectedParticipants.length < 2 || prize <= 0 || isSpinning;
 }
 
@@ -1584,7 +1584,7 @@ $('#select-all-participants').addEventListener('click', () => {
 // Save raffle config
 $('#btn-save-raffle').addEventListener('click', async () => {
   const name = $('#raffle-name').value.trim();
-  const prize = parseFloat($('#raffle-prize').value) || 0;
+  const prize = parseGold($('#raffle-prize').value);
 
   if (!name) {
     showToast('Informe o nome do sorteio.', 'error');
@@ -1619,13 +1619,13 @@ $('#btn-save-raffle').addEventListener('click', async () => {
 
 // Update prize display
 $('#raffle-prize').addEventListener('input', () => {
-  const prize = parseFloat($('#raffle-prize').value) || 0;
+  const prize = parseGold($('#raffle-prize').value);
   $('#raffle-prize-display').textContent = formatGold(prize);
   updateSpinButton();
 });
 
 function updateRaffleInfo() {
-  const prize = parseFloat($('#raffle-prize').value) || 0;
+  const prize = parseGold($('#raffle-prize').value);
   $('#raffle-prize-display').textContent = formatGold(prize);
   $('#raffle-participants-count').textContent = selectedParticipants.length;
 }
@@ -1667,7 +1667,7 @@ function renderRoulette() {
 $('#btn-spin-raffle').addEventListener('click', async () => {
   if (selectedParticipants.length < 2 || isSpinning) return;
 
-  const prize = parseFloat($('#raffle-prize').value) || 0;
+  const prize = parseGold($('#raffle-prize').value);
   if (prize <= 0) {
     showToast('Informe o valor do prêmio.', 'error');
     return;
@@ -1783,6 +1783,43 @@ function formatGold(value) {
   const num = Number(value) || 0;
   return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'G';
 }
+
+function parseGold(value) {
+  if (!value) return 0;
+  // Remove formatting and parse
+  const normalized = String(value).replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(normalized);
+  return isNaN(num) ? 0 : num;
+}
+
+// Auto-format currency input as user types
+function formatCurrencyInput(input) {
+  // Remove all non-digits
+  let digits = input.value.replace(/\D/g, '');
+  
+  // If empty, show empty
+  if (!digits) {
+    input.value = '';
+    return;
+  }
+  
+  // Convert to number with 2 decimal places
+  const num = parseInt(digits, 10) / 100;
+  
+  // Format with Brazilian locale
+  input.value = num.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+// Apply mask to all price inputs
+['#item-price', '#edit-item-price', '#sell-item-price', '#raffle-prize'].forEach(sel => {
+  const el = $(sel);
+  if (el) {
+    el.addEventListener('input', () => formatCurrencyInput(el));
+  }
+});
 
 function showFullscreenImage(src) {
   const modal = $('#fullscreen-image-modal');

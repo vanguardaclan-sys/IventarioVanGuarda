@@ -312,7 +312,7 @@
 
               <div class="form-group">
                 <label>Valor do Prêmio (Gold)</label>
-                <input type="number" id="raffle-prize" placeholder="0" min="0" step="1">
+                <input type="text" inputmode="decimal" id="raffle-prize" placeholder="0,00" required>
               </div>
 
               <div class="form-group">
@@ -570,7 +570,7 @@
         <!-- Step 4: Price -->
         <div class="form-group" id="skin-price-group" style="display:none;">
           <label>Valor (Gold)</label>
-          <input type="number" id="item-price" placeholder="0" min="0" step="1" required>
+          <input type="text" inputmode="decimal" id="item-price" placeholder="0,00" required>
         </div>
         <!-- Step 5: Photo -->
         <div class="form-group" id="skin-photo-group" style="display:none;">
@@ -602,7 +602,7 @@
         </div>
         <div class="form-group">
           <label>Valor (Gold)</label>
-          <input type="number" id="edit-item-price" min="0" step="1" required>
+          <input type="text" inputmode="decimal" id="edit-item-price" placeholder="0,00" required>
         </div>
         <div class="form-group">
           <label>Foto da Skin</label>
@@ -636,7 +636,7 @@
       <form id="sell-item-form">
         <div class="form-group">
           <label>Valor de Venda (Gold)</label>
-          <input type="number" id="sell-item-price" min="0" step="1" placeholder="0" required>
+          <input type="text" inputmode="decimal" id="sell-item-price" placeholder="0,00" required>
         </div>
         <button type="submit" class="btn btn-primary btn-full">CONFIRMAR VENDA</button>
       </form>
