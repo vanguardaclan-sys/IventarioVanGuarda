@@ -973,6 +973,35 @@ $$('.modal-overlay').forEach(overlay => {
 });
 
 // ============================================
+// BATCH UTILITY — processa promises em lotes
+// ============================================
+
+async function processInBatches(items, batchSize, fn) {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
+}
+
+async function fetchUserInventoryCounts(uid) {
+  const [itemsSnap, subItemsSnap] = await Promise.all([
+    db.collection('users').doc(uid).collection('items').get(),
+    db.collection('users').doc(uid).collection('subItems').get()
+  ]);
+  
+  let totalValue = 0, itemCount = 0;
+  itemsSnap.forEach(itemDoc => { const d = itemDoc.data(); totalValue += d.price || 0; itemCount++; });
+  
+  let subValue = 0, subItemCount = 0;
+  subItemsSnap.forEach(itemDoc => { const d = itemDoc.data(); subValue += d.soldPrice || 0; subItemCount++; });
+  
+  return { itemCount, totalValue, subItemCount, subValue };
+}
+
+// ============================================
 // PLAYERS
 // ============================================
 
@@ -981,11 +1010,17 @@ async function loadPlayers() {
   grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando jogadores...</p></div>';
   try {
     const snapshot = await db.collection('users').get();
-    allUsers = snapshot.docs
-      .filter(doc => doc.id !== currentUser.uid)
-      .map(doc => {
-        const userData = doc.data();
-        return {
+    const docs = snapshot.docs.filter(doc => doc.id !== currentUser.uid);
+    
+    // Separar usuários com e sem dados de inventário salvos
+    const usersWithTotals = [];
+    const usersNeedingUpdate = [];
+    
+    docs.forEach(doc => {
+      const userData = doc.data();
+      if (userData.totalCombined !== undefined && userData.itemCount !== undefined) {
+        // Já tem totais salvos
+        usersWithTotals.push({
           uid: doc.id, displayName: userData.displayName || 'Player',
           gameId: userData.gameId || '', phone: userData.phone || '',
           createdAt: userData.createdAt,
@@ -993,9 +1028,40 @@ async function loadPlayers() {
           subItemCount: userData.subItemCount || 0, subValue: userData.subValue || 0,
           isAdmin: userData.role === 'admin',
           profilePhoto: userData.profilePhoto || null
-        };
-      });
+        });
+      } else {
+        // Precisa buscar inventário e salvar totais
+        usersNeedingUpdate.push({ doc, userData });
+      }
+    });
     
+    // Backfill: buscar inventários dos usuários sem totais e salvar
+    const updatedUsers = await processInBatches(usersNeedingUpdate, 10, async ({ doc, userData }) => {
+      const counts = await fetchUserInventoryCounts(doc.id);
+      
+      // Salvar totais no documento do usuário para próximas vezes
+      try {
+        await db.collection('users').doc(doc.id).update({
+          itemCount: counts.itemCount,
+          totalValue: counts.totalValue,
+          subItemCount: counts.subItemCount,
+          subValue: counts.subValue,
+          totalCombined: counts.totalValue + counts.subValue
+        });
+      } catch (e) { /* ignora erro de permissão */ }
+      
+      return {
+        uid: doc.id, displayName: userData.displayName || 'Player',
+        gameId: userData.gameId || '', phone: userData.phone || '',
+        createdAt: userData.createdAt,
+        itemCount: counts.itemCount, totalValue: counts.totalValue,
+        subItemCount: counts.subItemCount, subValue: counts.subValue,
+        isAdmin: userData.role === 'admin',
+        profilePhoto: userData.profilePhoto || null
+      };
+    });
+    
+    allUsers = [...usersWithTotals, ...updatedUsers];
     renderPlayers(allUsers);
   } catch (err) {
     console.error('Error loading players:', err);
@@ -1056,12 +1122,14 @@ async function openPlayerProfile(uid) {
   $('#profile-value').textContent = '0G';
   $('#profile-inventory').innerHTML = loadingHtml;
   
+  // Reset profile tabs
+  $$('.profile-tab').forEach(t => t.classList.remove('active'));
+  $$('.profile-tab')[0]?.classList.add('active');
+  currentProfileTab = 'main';
+  
   modal.classList.remove('hidden');
   
   try {
-    // Delay mínimo para mostrar o loading (melhora UX)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
     const userDoc = await db.collection('users').doc(uid).get();
     const userData = userDoc.data();
     
@@ -1075,8 +1143,18 @@ async function openPlayerProfile(uid) {
     const subItems = []; let subValue = 0;
     subItemsSnap.forEach(doc => { const d = doc.data(); subItems.push(d); subValue += d.soldPrice || 0; });
 
+    // Save totals back to user document for faster loading
+    try {
+      await db.collection('users').doc(uid).update({
+        itemCount: items.length,
+        totalValue,
+        subItemCount: subItems.length,
+        subValue,
+        totalCombined: totalValue + subValue
+      });
+    } catch (e) { /* ignora erro de permissão */ }
+
     $('#profile-avatar').textContent = (userData.displayName || 'P').charAt(0).toUpperCase();
-    // Show profile photo if available
     if (userData.profilePhoto) {
       $('#profile-avatar').innerHTML = `<img src="${userData.profilePhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
     }
@@ -1086,11 +1164,41 @@ async function openPlayerProfile(uid) {
     $('#profile-items').textContent = items.length + subItems.length;
     $('#profile-value').textContent = formatGold(totalValue + subValue);
 
-    const profileGrid = $('#profile-inventory');
-    let html = '';
+    // Store items for tab switching
+    currentProfileItems = items;
+    currentProfileSubItems = subItems;
     
-    if (items.length > 0) {
-      html += items.map(item => `
+    renderProfileTab('main');
+
+    // Tab switching
+    $$('.profile-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        $$('.profile-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentProfileTab = tab.dataset.profileTab;
+        renderProfileTab(currentProfileTab);
+      });
+    });
+
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao carregar perfil.', 'error');
+  }
+}
+
+let currentProfileTab = 'main';
+let currentProfileItems = [];
+let currentProfileSubItems = [];
+
+function renderProfileTab(tab) {
+  const profileGrid = $('#profile-inventory');
+  
+  if (tab === 'main') {
+    const items = currentProfileItems;
+    if (items.length === 0) {
+      profileGrid.innerHTML = '<div class="empty-state"><p>Inventário vazio</p></div>';
+    } else {
+      profileGrid.innerHTML = items.map(item => `
         <div class="profile-item-card">
           ${item.photo ? `<img src="${item.photo}" alt="${item.name}">` : '<div style="height:80px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
           <div class="profile-item-info">
@@ -1100,9 +1208,12 @@ async function openPlayerProfile(uid) {
           </div>
         </div>`).join('');
     }
-    
-    if (subItems.length > 0) {
-      html += subItems.map(item => `
+  } else {
+    const subItems = currentProfileSubItems;
+    if (subItems.length === 0) {
+      profileGrid.innerHTML = '<div class="empty-state"><p>Sub-inventário vazio</p></div>';
+    } else {
+      profileGrid.innerHTML = subItems.map(item => `
         <div class="profile-item-card" style="opacity:0.7">
           ${item.photo ? `<img src="${item.photo}" alt="${item.name}">` : '<div style="height:80px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
           <div class="profile-item-info">
@@ -1112,21 +1223,16 @@ async function openPlayerProfile(uid) {
           </div>
         </div>`).join('');
     }
-    
-    profileGrid.innerHTML = html || '<div class="empty-state"><p>Inventário vazio</p></div>';
-
-    // Fullscreen image on click in profile
-    profileGrid.querySelectorAll('img').forEach(img => {
-      img.style.cursor = 'pointer';
-      img.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showFullscreenImage(img.src);
-      });
-    });
-  } catch (err) {
-    console.error(err);
-    showToast('Erro ao carregar perfil.', 'error');
   }
+
+  // Fullscreen image on click
+  profileGrid.querySelectorAll('img').forEach(img => {
+    img.style.cursor = 'pointer';
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showFullscreenImage(img.src);
+    });
+  });
 }
 
 // ============================================
@@ -1138,20 +1244,50 @@ async function loadRanking() {
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando ranking...</p></div>';
   try {
     const snapshot = await db.collection('users').get();
-    const rankings = snapshot.docs.map(doc => {
+    const usersWithTotals = [];
+    const usersNeedingUpdate = [];
+    
+    snapshot.docs.forEach(doc => {
       const userData = doc.data();
-      const totalValue = userData.totalValue || 0;
-      const subValue = userData.subValue || 0;
+      if (userData.totalCombined !== undefined && userData.itemCount !== undefined) {
+        const totalValue = userData.totalValue || 0;
+        const subValue = userData.subValue || 0;
+        usersWithTotals.push({
+          uid: doc.id, displayName: userData.displayName || 'Player',
+          itemCount: userData.itemCount || 0, subItemCount: userData.subItemCount || 0,
+          totalValue, subValue,
+          totalCombined: totalValue + subValue,
+          isAdmin: userData.role === 'admin',
+          isCurrentUser: doc.id === currentUser.uid
+        });
+      } else {
+        usersNeedingUpdate.push({ doc, userData });
+      }
+    });
+    
+    const updatedUsers = await processInBatches(usersNeedingUpdate, 10, async ({ doc, userData }) => {
+      const counts = await fetchUserInventoryCounts(doc.id);
+      try {
+        await db.collection('users').doc(doc.id).update({
+          itemCount: counts.itemCount,
+          totalValue: counts.totalValue,
+          subItemCount: counts.subItemCount,
+          subValue: counts.subValue,
+          totalCombined: counts.totalValue + counts.subValue
+        });
+      } catch (e) { /* ignora erro de permissão */ }
+      
       return {
         uid: doc.id, displayName: userData.displayName || 'Player',
-        itemCount: userData.itemCount || 0, subItemCount: userData.subItemCount || 0,
-        totalValue, subValue,
-        totalCombined: totalValue + subValue,
+        itemCount: counts.itemCount, subItemCount: counts.subItemCount,
+        totalValue: counts.totalValue, subValue: counts.subValue,
+        totalCombined: counts.totalValue + counts.subValue,
         isAdmin: userData.role === 'admin',
         isCurrentUser: doc.id === currentUser.uid
       };
     });
     
+    const rankings = [...usersWithTotals, ...updatedUsers];
     rankings.sort((a, b) => b.totalCombined - a.totalCombined);
     renderRanking(rankings);
   } catch (err) {
@@ -1246,22 +1382,56 @@ async function loadAdminPanel() {
   list.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando usuários...</p></div>';
   try {
     const snapshot = await db.collection('users').get();
-    adminAllUsers = snapshot.docs.map(doc => {
+    const usersWithTotals = [];
+    const usersNeedingUpdate = [];
+    
+    snapshot.docs.forEach(doc => {
       const userData = doc.data();
-      const totalValue = userData.totalValue || 0;
-      const subValue = userData.subValue || 0;
+      if (userData.totalCombined !== undefined && userData.itemCount !== undefined) {
+        const totalValue = userData.totalValue || 0;
+        const subValue = userData.subValue || 0;
+        usersWithTotals.push({
+          uid: doc.id, displayName: userData.displayName || 'Player',
+          email: userData.email || '', gameId: userData.gameId || '', phone: userData.phone || '',
+          itemCount: userData.itemCount || 0, totalValue,
+          subItemCount: userData.subItemCount || 0, subValue,
+          totalCombined: totalValue + subValue,
+          role: userData.role || 'user',
+          status: userData.status || 'pending',
+          createdAt: userData.createdAt,
+          profilePhoto: userData.profilePhoto || null
+        });
+      } else {
+        usersNeedingUpdate.push({ doc, userData });
+      }
+    });
+    
+    const updatedUsers = await processInBatches(usersNeedingUpdate, 10, async ({ doc, userData }) => {
+      const counts = await fetchUserInventoryCounts(doc.id);
+      try {
+        await db.collection('users').doc(doc.id).update({
+          itemCount: counts.itemCount,
+          totalValue: counts.totalValue,
+          subItemCount: counts.subItemCount,
+          subValue: counts.subValue,
+          totalCombined: counts.totalValue + counts.subValue
+        });
+      } catch (e) { /* ignora erro de permissão */ }
+      
       return {
         uid: doc.id, displayName: userData.displayName || 'Player',
         email: userData.email || '', gameId: userData.gameId || '', phone: userData.phone || '',
-        itemCount: userData.itemCount || 0, totalValue,
-        subItemCount: userData.subItemCount || 0, subValue,
-        totalCombined: totalValue + subValue,
+        itemCount: counts.itemCount, totalValue: counts.totalValue,
+        subItemCount: counts.subItemCount, subValue: counts.subValue,
+        totalCombined: counts.totalValue + counts.subValue,
         role: userData.role || 'user',
         status: userData.status || 'pending',
         createdAt: userData.createdAt,
         profilePhoto: userData.profilePhoto || null
       };
     });
+    
+    adminAllUsers = [...usersWithTotals, ...updatedUsers];
     
     let globalItems = 0, globalValue = 0;
     adminAllUsers.forEach(u => {
