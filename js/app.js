@@ -1856,7 +1856,7 @@ $('#select-all-participants').addEventListener('click', () => {
   updateSpinButton();
 });
 
-// Save raffle config
+// Save raffle config (just validates, actual save happens on spin)
 $('#btn-save-raffle').addEventListener('click', async () => {
   const name = $('#raffle-name').value.trim();
   const prize = parseGold($('#raffle-prize').value);
@@ -1874,22 +1874,9 @@ $('#btn-save-raffle').addEventListener('click', async () => {
     return;
   }
 
-  try {
-    // Save raffle config to Firestore
-    await db.collection('raffles').add({
-      name,
-      prize,
-      participants: selectedParticipants,
-      status: 'pending',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: currentUser.uid
-    });
-    showToast('Sorteio configurado com sucesso!', 'success');
-    renderRoulette();
-    updateRaffleInfo();
-  } catch (err) {
-    showToast('Erro ao salvar sorteio: ' + err.message, 'error');
-  }
+  showToast('Configuração salva! Clique em GIRAR para sortear.', 'success');
+  renderRoulette();
+  updateRaffleInfo();
 });
 
 // Update prize display
@@ -1942,7 +1929,13 @@ function renderRoulette() {
 $('#btn-spin-raffle').addEventListener('click', async () => {
   if (selectedParticipants.length < 2 || isSpinning) return;
 
+  const name = $('#raffle-name').value.trim();
   const prize = parseGold($('#raffle-prize').value);
+  
+  if (!name) {
+    showToast('Informe o nome do sorteio.', 'error');
+    return;
+  }
   if (prize <= 0) {
     showToast('Informe o valor do prêmio.', 'error');
     return;
@@ -1964,10 +1957,19 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
   const finalRotation = spins * 360 + targetAngle;
 
   const wheel = $('#roulette-wheel');
-  wheel.classList.add('spinning');
+  
+  // Remove transition temporarily to reset position instantly
+  wheel.style.transition = 'none';
+  wheel.style.transform = 'rotate(0deg)';
+  
+  // Force reflow
+  wheel.offsetHeight;
+  
+  // Add transition and spin
+  wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
   wheel.style.transform = `rotate(${finalRotation}deg)`;
 
-  // Wait for animation
+  // Wait for animation (4 seconds)
   setTimeout(async () => {
     isSpinning = false;
     
@@ -1978,8 +1980,8 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
 
     // Save result to Firestore
     try {
-      const raffleRef = await db.collection('raffles').add({
-        name: $('#raffle-name').value.trim(),
+      await db.collection('raffles').add({
+        name,
         prize,
         participants: selectedParticipants,
         winnerUid,
@@ -1991,29 +1993,41 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
       showToast(`Parabéns ${winner?.displayName || 'Player'}!`, 'success');
       await loadRaffleHistory();
 
-      // Reset roulette after showing winner
+      // Scroll to history section
+      const historyEl = $('#raffle-history');
+      if (historyEl) {
+        historyEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // Reset roulette after 5 seconds
       setTimeout(() => {
-        // Reset wheel rotation
-        wheel.classList.remove('spinning');
+        // Hide winner display
+        $('#raffle-winner').style.display = 'none';
+        
+        // Reset wheel without animation
+        wheel.style.transition = 'none';
         wheel.style.transform = 'rotate(0deg)';
         
         // Clear selections
         selectedParticipants = [];
-        renderParticipantsList($('#participants-search').value);
+        renderParticipantsList($('#participants-search').value || '');
         updateSelectedCount();
         updateSpinButton();
         
-        // Scroll to history section
-        const historyEl = $('#raffle-history');
-        if (historyEl) {
-          historyEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Clear roulette display
+        renderRoulette();
+        
+        // Scroll back to top of raffle section
+        const raffleView = $('#view-raffle');
+        if (raffleView) {
+          raffleView.scrollTo({ top: 0, behavior: 'smooth' });
         }
-      }, 2000);
+      }, 5000);
     } catch (err) {
       showToast('Erro ao salvar resultado: ' + err.message, 'error');
+      isSpinning = false;
+      updateSpinButton();
     }
-
-    updateSpinButton();
   }, 4000);
 });
 
