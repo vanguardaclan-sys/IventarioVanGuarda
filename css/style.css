@@ -1932,6 +1932,3 @@ body {
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
-  display: block;
-  margin-bottom: 0.2rem;
-}

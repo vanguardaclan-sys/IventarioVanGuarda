@@ -1,5 +1,6 @@
 // ============================================
 // SKINVANGUARDA — Standoff 2 Inventory Tracker
+// (OTIMIZADO para performance mobile)
 // ============================================
 
 // Global error handler
@@ -59,6 +60,10 @@ let currentInventoryTab = 'main';
 let editingItemId = null;
 let sellingItem = null;
 
+// --- CACHE DE USUARIOS (evita re-fetch redundante) ---
+const usersCache = { data: null, timestamp: 0 };
+const USERS_CACHE_TTL = 30000; // 30 segundos
+
 // --- DOM ---
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -66,7 +71,6 @@ const $$ = (sel) => document.querySelectorAll(sel);
 // ============================================
 // AUTH
 // ============================================
-
 $$('.auth-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     $$('.auth-tab').forEach(t => t.classList.remove('active'));
@@ -187,6 +191,7 @@ auth.onAuthStateChanged(async (user) => {
     } else {
       currentUser = null;
       currentUserData = null;
+      invalidateUsersCache();
       showAuth();
     }
   } catch (err) {
@@ -230,7 +235,6 @@ function updateUserBadge() {
   $('#user-display-name').textContent = name;
   const avatar = $('#user-avatar');
   
-  // Show profile photo if available
   const photoData = currentUserData?.profilePhoto;
   if (photoData) {
     avatar.innerHTML = `<img src="${photoData}" alt="${name}">`;
@@ -245,7 +249,6 @@ function updateUserBadge() {
 // ============================================
 // NAVIGATION
 // ============================================
-
 function switchView(viewName) {
   $$('.nav-btn').forEach(b => b.classList.remove('active'));
   $(`.nav-btn[data-view="${viewName}"]`)?.classList.add('active');
@@ -272,7 +275,6 @@ $$('.mobile-nav-btn').forEach(btn => {
 // ============================================
 // INVENTORY TABS
 // ============================================
-
 $$('.inventory-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     $$('.inventory-tab').forEach(t => t.classList.remove('active'));
@@ -292,7 +294,6 @@ $$('.inventory-tab').forEach(tab => {
 // ============================================
 // SETTINGS
 // ============================================
-
 function loadSettings() {
   if (!currentUser || !currentUserData) return;
   $('#settings-nickname').value = currentUserData.displayName || '';
@@ -312,7 +313,6 @@ function loadSettings() {
   const createdDate = currentUserData.createdAt?.toDate();
   sinceEl.textContent = createdDate ? createdDate.toLocaleDateString('pt-BR') : '—';
 
-  // Load profile photo
   loadProfilePhoto();
 }
 
@@ -334,7 +334,6 @@ function loadProfilePhoto() {
   }
 }
 
-// Profile photo upload
 $('#btn-upload-photo').addEventListener('click', () => {
   $('#profile-photo-input').click();
 });
@@ -347,7 +346,7 @@ $('#profile-photo-input').addEventListener('change', async (e) => {
     const img = new Image();
     img.onload = async () => {
       const canvas = document.createElement('canvas');
-      const MAX = 200;
+      const MAX = 150; // Reduzido de 200 para 150 — avatar pequeno
       let w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -451,7 +450,6 @@ $('#settings-password-form').addEventListener('submit', async (e) => {
 // ============================================
 // ADD ITEM
 // ============================================
-
 function populateCategories() {
   const sel = $('#item-category');
   sel.innerHTML = '<option value="">Selecionar categoria...</option>';
@@ -520,7 +518,9 @@ photoInput.addEventListener('change', (e) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX = 1920;
+      // OTIMIZADO: 800px max (era 1920) e qualidade 0.7 (era 0.95)
+      // Reduz payload em ~70% sem perda visual significativa em cards pequenos
+      const MAX = 800;
       let w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -528,7 +528,7 @@ photoInput.addEventListener('change', (e) => {
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.95);
+      currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
       photoPreview.src = currentPhotoBase64;
       photoPreview.style.display = 'block';
       photoPlaceholder.style.display = 'none';
@@ -564,13 +564,11 @@ $('#add-item-form').addEventListener('submit', async (e) => {
 
   try {
     if (inventory === 'sub') {
-      // Add to sub-inventory
       item.soldPrice = price;
       item.soldAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('users').doc(currentUser.uid).collection('subItems').add(item);
       showToast(`"${name}" adicionado ao sub-inventário!`, 'success');
     } else {
-      // Add to main inventory
       await db.collection('users').doc(currentUser.uid).collection('items').add(item);
       showToast(`"${name}" adicionado!`, 'success');
     }
@@ -583,6 +581,7 @@ $('#add-item-form').addEventListener('submit', async (e) => {
     $('#btn-submit-item').style.display = 'none';
     resetPhotoUpload();
     $('#add-item-modal').classList.add('hidden');
+    invalidateUsersCache();
     loadInventory();
   } catch (err) { showToast('Erro: ' + err.message, 'error'); }
 });
@@ -592,7 +591,6 @@ $('#btn-add-item').addEventListener('click', () => { $('#add-item-modal').classL
 // ============================================
 // EDIT ITEM
 // ============================================
-
 function openEditModal(item) {
   editingItemId = item.id;
   editPhotoBase64 = item.photo || null;
@@ -630,7 +628,8 @@ editPhotoInput.addEventListener('change', (e) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX = 1920;
+      // OTIMIZADO: 800px max e qualidade 0.7
+      const MAX = 800;
       let w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -638,7 +637,7 @@ editPhotoInput.addEventListener('change', (e) => {
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      editPhotoBase64 = canvas.toDataURL('image/jpeg', 0.95);
+      editPhotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
       editPhotoPreview.src = editPhotoBase64;
       editPhotoPreview.style.display = 'block';
       editPhotoPlaceholder.style.display = 'none';
@@ -661,6 +660,7 @@ $('#edit-item-form').addEventListener('submit', async (e) => {
     });
     showToast('Item atualizado!', 'success');
     $('#edit-item-modal').classList.add('hidden');
+    invalidateUsersCache();
     loadInventory();
   } catch (err) {
     showToast('Erro: ' + err.message, 'error');
@@ -670,7 +670,6 @@ $('#edit-item-form').addEventListener('submit', async (e) => {
 // ============================================
 // SELL ITEM
 // ============================================
-
 function openSellModal(item) {
   sellingItem = item;
   
@@ -693,7 +692,6 @@ $('#sell-item-form').addEventListener('submit', async (e) => {
   const sellPrice = parseGold($('#sell-item-price').value);
 
   try {
-    // Move to sub-inventory with sold price
     await db.collection('users').doc(currentUser.uid).collection('subItems').add({
       ...sellingItem,
       originalPrice: sellingItem.price,
@@ -701,11 +699,11 @@ $('#sell-item-form').addEventListener('submit', async (e) => {
       soldAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
-    // Remove from main inventory
     await db.collection('users').doc(currentUser.uid).collection('items').doc(sellingItem.id).delete();
     
     showToast(`"${sellingItem.name}" vendido por ${formatGold(sellPrice)}!`, 'success');
     $('#sell-item-modal').classList.add('hidden');
+    invalidateUsersCache();
     loadInventory();
   } catch (err) {
     showToast('Erro: ' + err.message, 'error');
@@ -715,13 +713,13 @@ $('#sell-item-form').addEventListener('submit', async (e) => {
 // ============================================
 // DELETE ITEM
 // ============================================
-
 async function deleteItem(itemId, itemName) {
   if (!confirm(`Excluir "${itemName}"?`)) return;
   
   try {
     await db.collection('users').doc(currentUser.uid).collection('items').doc(itemId).delete();
     showToast('Item excluído.', 'success');
+    invalidateUsersCache();
     loadInventory();
   } catch (err) {
     showToast('Erro ao excluir.', 'error');
@@ -729,13 +727,11 @@ async function deleteItem(itemId, itemName) {
 }
 
 // ============================================
-// LOAD INVENTORY
+// LOAD INVENTORY (OTIMIZADO: Promise.all)
 // ============================================
-
 async function loadInventory() {
   if (!currentUser) return;
   try {
-    // Show loading state in inventory grid
     const grid = $('#inventory-grid');
     const subGrid = $('#sub-inventory-grid');
     if (currentInventoryTab === 'main') {
@@ -744,20 +740,20 @@ async function loadInventory() {
       subGrid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando sub-inventário...</p></div>';
     }
     
-    // Load main inventory
-    const snapshot = await db.collection('users').doc(currentUser.uid)
-      .collection('items').orderBy('addedAt', 'desc').get();
+    // OTIMIZADO: Carrega main e sub em paralelo com Promise.all
+    const [snapshot, subSnapshot] = await Promise.all([
+      db.collection('users').doc(currentUser.uid)
+        .collection('items').orderBy('addedAt', 'desc').get(),
+      db.collection('users').doc(currentUser.uid)
+        .collection('subItems').orderBy('soldAt', 'desc').get()
+    ]);
+    
     inventoryItems = [];
     snapshot.forEach(doc => inventoryItems.push({ id: doc.id, ...doc.data() }));
-    // Sort by price descending (maior → menor)
     inventoryItems.sort((a, b) => (b.price || 0) - (a.price || 0));
     
-    // Load sub-inventory
-    const subSnapshot = await db.collection('users').doc(currentUser.uid)
-      .collection('subItems').orderBy('soldAt', 'desc').get();
     subInventoryItems = [];
     subSnapshot.forEach(doc => subInventoryItems.push({ id: doc.id, ...doc.data() }));
-    // Sort sub-inventory by soldPrice descending
     subInventoryItems.sort((a, b) => (b.soldPrice || 0) - (a.soldPrice || 0));
     
     updateInventoryStats();
@@ -778,7 +774,6 @@ function updateInventoryStats() {
   $('#stat-value').textContent = formatGold(totalValue);
   $('#stat-sub-value').textContent = formatGold(subValue);
   
-  // Update user document with totals for fast loading in other pages
   updateUserData(totalItems, totalValue, subInventoryItems.length, subValue);
 }
 
@@ -854,7 +849,7 @@ function renderSubInventory() {
 
 function createItemCard(item) {
   const imageHtml = item.photo
-    ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true">`
+    ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true" loading="lazy">`
     : `<span class="item-weapon-icon">🔫</span>`;
 
   return `
@@ -884,7 +879,7 @@ function createItemCard(item) {
 
 function createSubItemCard(item) {
   const imageHtml = item.photo
-    ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true">`
+    ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true" loading="lazy">`
     : `<span class="item-weapon-icon">🔫</span>`;
 
   return `
@@ -928,7 +923,6 @@ function attachItemActions(grid) {
     });
   });
 
-  // Fullscreen image on click
   grid.querySelectorAll('.skin-clickable-img').forEach(img => {
     img.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -948,6 +942,7 @@ function attachSubItemActions(grid) {
       try {
         await db.collection('users').doc(currentUser.uid).collection('subItems').doc(itemId).delete();
         showToast('Item removido do sub-inventário.', 'success');
+        invalidateUsersCache();
         loadInventory();
       } catch (err) {
         showToast('Erro ao excluir.', 'error');
@@ -955,7 +950,6 @@ function attachSubItemActions(grid) {
     });
   });
 
-  // Fullscreen image on click
   grid.querySelectorAll('.skin-clickable-img').forEach(img => {
     img.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -973,9 +967,8 @@ $$('.modal-overlay').forEach(overlay => {
 });
 
 // ============================================
-// BATCH UTILITY — processa promises em lotes
+// BATCH UTILITY
 // ============================================
-
 async function processInBatches(items, batchSize, fn) {
   const results = [];
   for (let i = 0; i < items.length; i += batchSize) {
@@ -1001,25 +994,40 @@ async function fetchUserInventoryCounts(uid) {
   return { itemCount, totalValue, subItemCount, subValue };
 }
 
-// ============================================
-// PLAYERS
-// ============================================
+// --- CACHE helpers ---
+function invalidateUsersCache() {
+  usersCache.data = null;
+  usersCache.timestamp = 0;
+}
 
+async function getCachedUsers() {
+  const now = Date.now();
+  if (usersCache.data && (now - usersCache.timestamp) < USERS_CACHE_TTL) {
+    return usersCache.data;
+  }
+  const snapshot = await db.collection('users').get();
+  usersCache.data = snapshot;
+  usersCache.timestamp = now;
+  return snapshot;
+}
+
+// ============================================
+// PLAYERS (OTIMIZADO: cache)
+// ============================================
 async function loadPlayers() {
   const grid = $('#players-grid');
   grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando jogadores...</p></div>';
   try {
-    const snapshot = await db.collection('users').get();
+    // OTIMIZADO: usa cache de usuarios compartilhado com ranking/admin
+    const snapshot = await getCachedUsers();
     const docs = snapshot.docs.filter(doc => doc.id !== currentUser.uid);
     
-    // Separar usuários com e sem dados de inventário salvos
     const usersWithTotals = [];
     const usersNeedingUpdate = [];
     
     docs.forEach(doc => {
       const userData = doc.data();
       if (userData.totalCombined !== undefined && userData.itemCount !== undefined) {
-        // Já tem totais salvos
         usersWithTotals.push({
           uid: doc.id, displayName: userData.displayName || 'Player',
           gameId: userData.gameId || '', phone: userData.phone || '',
@@ -1030,16 +1038,12 @@ async function loadPlayers() {
           profilePhoto: userData.profilePhoto || null
         });
       } else {
-        // Precisa buscar inventário e salvar totais
         usersNeedingUpdate.push({ doc, userData });
       }
     });
     
-    // Backfill: buscar inventários dos usuários sem totais e salvar
     const updatedUsers = await processInBatches(usersNeedingUpdate, 10, async ({ doc, userData }) => {
       const counts = await fetchUserInventoryCounts(doc.id);
-      
-      // Salvar totais no documento do usuário para próximas vezes
       try {
         await db.collection('users').doc(doc.id).update({
           itemCount: counts.itemCount,
@@ -1082,7 +1086,7 @@ function renderPlayers(players) {
   }
   grid.innerHTML = players.map(p => `
     <div class="player-card" data-uid="${p.uid}">
-      <div class="player-card-avatar">${p.profilePhoto ? `<img src="${p.profilePhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : p.displayName.charAt(0).toUpperCase()}</div>
+      <div class="player-card-avatar">${p.profilePhoto ? `<img src="${p.profilePhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" loading="lazy">` : p.displayName.charAt(0).toUpperCase()}</div>
       <div class="player-card-info">
         <div class="player-card-name">${p.displayName}${p.isAdmin ? ' <span class="admin-tag">ADMIN</span>' : ''}</div>
         <div class="player-card-meta">${p.itemCount} ${p.itemCount === 1 ? 'item' : 'itens'}</div>
@@ -1107,7 +1111,6 @@ $('#search-players').addEventListener('input', (e) => {
 async function openPlayerProfile(uid) {
   const modal = $('#player-modal');
   
-  // Limpar conteúdo anterior e mostrar loading animado
   const loadingHtml = `
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;gap:1rem;">
       <div style="width:50px;height:50px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
@@ -1122,7 +1125,6 @@ async function openPlayerProfile(uid) {
   $('#profile-value').textContent = '0G';
   $('#profile-inventory').innerHTML = loadingHtml;
   
-  // Reset profile tabs
   $$('.profile-tab').forEach(t => t.classList.remove('active'));
   $$('.profile-tab')[0]?.classList.add('active');
   currentProfileTab = 'main';
@@ -1133,17 +1135,18 @@ async function openPlayerProfile(uid) {
     const userDoc = await db.collection('users').doc(uid).get();
     const userData = userDoc.data();
     
-    // Main inventory
-    const itemsSnap = await db.collection('users').doc(uid).collection('items').orderBy('addedAt', 'desc').get();
+    // OTIMIZADO: carrega items e subItems em paralelo
+    const [itemsSnap, subItemsSnap] = await Promise.all([
+      db.collection('users').doc(uid).collection('items').orderBy('addedAt', 'desc').get(),
+      db.collection('users').doc(uid).collection('subItems').orderBy('soldAt', 'desc').get()
+    ]);
+    
     const items = []; let totalValue = 0;
     itemsSnap.forEach(doc => { const d = doc.data(); items.push(d); totalValue += d.price || 0; });
     
-    // Sub-inventory
-    const subItemsSnap = await db.collection('users').doc(uid).collection('subItems').orderBy('soldAt', 'desc').get();
     const subItems = []; let subValue = 0;
     subItemsSnap.forEach(doc => { const d = doc.data(); subItems.push(d); subValue += d.soldPrice || 0; });
 
-    // Save totals back to user document for faster loading
     try {
       await db.collection('users').doc(uid).update({
         itemCount: items.length,
@@ -1164,13 +1167,11 @@ async function openPlayerProfile(uid) {
     $('#profile-items').textContent = items.length + subItems.length;
     $('#profile-value').textContent = formatGold(totalValue + subValue);
 
-    // Store items for tab switching
     currentProfileItems = items;
     currentProfileSubItems = subItems;
     
     renderProfileTab('main');
 
-    // Tab switching
     $$('.profile-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         $$('.profile-tab').forEach(t => t.classList.remove('active'));
@@ -1200,7 +1201,7 @@ function renderProfileTab(tab) {
     } else {
       profileGrid.innerHTML = items.map(item => `
         <div class="profile-item-card">
-          ${item.photo ? `<img src="${item.photo}" alt="${item.name}">` : '<div style="height:80px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
+          ${item.photo ? `<img src="${item.photo}" alt="${item.name}" loading="lazy">` : '<div style="height:80px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
           <div class="profile-item-info">
             <div class="profile-item-name">${item.name}</div>
             <div class="profile-item-weapon">${item.weapon || ''}</div>
@@ -1215,7 +1216,7 @@ function renderProfileTab(tab) {
     } else {
       profileGrid.innerHTML = subItems.map(item => `
         <div class="profile-item-card" style="opacity:0.7">
-          ${item.photo ? `<img src="${item.photo}" alt="${item.name}">` : '<div style="height:80px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
+          ${item.photo ? `<img src="${item.photo}" alt="${item.name}" loading="lazy">` : '<div style="height:80px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
           <div class="profile-item-info">
             <div class="profile-item-name">${item.name} <span style="color:var(--success);font-size:0.6rem">VENDIDO</span></div>
             <div class="profile-item-weapon">${item.weapon || ''}</div>
@@ -1225,7 +1226,6 @@ function renderProfileTab(tab) {
     }
   }
 
-  // Fullscreen image on click
   profileGrid.querySelectorAll('img').forEach(img => {
     img.style.cursor = 'pointer';
     img.addEventListener('click', (e) => {
@@ -1236,14 +1236,14 @@ function renderProfileTab(tab) {
 }
 
 // ============================================
-// RANKING
+// RANKING (OTIMIZADO: cache)
 // ============================================
-
 async function loadRanking() {
   const container = $('#ranking-container');
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando ranking...</p></div>';
   try {
-    const snapshot = await db.collection('users').get();
+    // OTIMIZADO: usa cache de usuarios compartilhado
+    const snapshot = await getCachedUsers();
     const usersWithTotals = [];
     const usersNeedingUpdate = [];
     
@@ -1371,9 +1371,8 @@ function renderRanking(rankings) {
 }
 
 // ============================================
-// ADMIN PANEL
+// ADMIN PANEL (OTIMIZADO: cache)
 // ============================================
-
 let adminCurrentTargetUid = null;
 
 async function loadAdminPanel() {
@@ -1381,7 +1380,8 @@ async function loadAdminPanel() {
   const list = $('#admin-users-list');
   list.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Carregando usuários...</p></div>';
   try {
-    const snapshot = await db.collection('users').get();
+    // OTIMIZADO: usa cache de usuarios compartilhado
+    const snapshot = await getCachedUsers();
     const usersWithTotals = [];
     const usersNeedingUpdate = [];
     
@@ -1518,6 +1518,7 @@ function renderAdminUsers(users) {
       try {
         await db.collection('users').doc(btn.dataset.uid).update({ status: 'approved', role: 'user' });
         showToast('Usuário aprovado como membro.', 'success');
+        invalidateUsersCache();
         loadAdminPanel();
       } catch (err) { showToast('Erro: ' + err.message, 'error'); }
     });
@@ -1529,6 +1530,7 @@ function renderAdminUsers(users) {
       try {
         await db.collection('users').doc(btn.dataset.uid).update({ status: 'approved', role: 'admin' });
         showToast('Usuário aprovado como ADMIN.', 'success');
+        invalidateUsersCache();
         loadAdminPanel();
       } catch (err) { showToast('Erro: ' + err.message, 'error'); }
     });
@@ -1541,6 +1543,7 @@ function renderAdminUsers(users) {
         try {
           await db.collection('users').doc(btn.dataset.uid).update({ status: 'rejected' });
           showToast('Usuário rejeitado.', 'success');
+          invalidateUsersCache();
           loadAdminPanel();
         } catch (err) { showToast('Erro: ' + err.message, 'error'); }
       }
@@ -1578,7 +1581,6 @@ async function openAdminUserDetail(uid) {
     const isSelf = uid === currentUser.uid;
 
     $('#admin-detail-avatar').textContent = (userData.displayName || 'P').charAt(0).toUpperCase();
-    // Show profile photo if available
     if (userData.profilePhoto) {
       $('#admin-detail-avatar').innerHTML = `<img src="${userData.profilePhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
     }
@@ -1590,7 +1592,6 @@ async function openAdminUserDetail(uid) {
     $('#admin-delete-user-btn').style.display = (isSelf) ? 'none' : '';
     $('#admin-clear-inventory-btn').style.display = items.length === 0 ? 'none' : '';
 
-    // Show account info for admin
     let accountInfoHtml = `
       <div class="admin-detail-account-info">
         <h4>INFORMAÇÕES DA CONTA</h4>
@@ -1622,7 +1623,6 @@ async function openAdminUserDetail(uid) {
         </div>
       </div>
     `;
-    // Insert account info before items header
     const itemsHeader = $('#admin-user-modal').querySelector('.admin-detail-items-header');
     const existingInfo = $('#admin-user-modal').querySelector('.admin-detail-account-info');
     if (existingInfo) existingInfo.remove();
@@ -1635,7 +1635,7 @@ async function openAdminUserDetail(uid) {
       itemsContainer.innerHTML = items.map(item => `
         <div class="admin-item-card">
           <button class="admin-item-delete" data-item-id="${item.id}">&times;</button>
-          ${item.photo ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true">` : '<div style="height:70px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
+          ${item.photo ? `<img src="${item.photo}" alt="${item.name}" class="skin-clickable-img" data-fullscreen="true" loading="lazy">` : '<div style="height:70px;display:flex;align-items:center;justify-content:center;background:var(--bg-base)">🔫</div>'}
           <div class="admin-item-info">
             <div class="admin-item-name">${item.name}</div>
             <div class="admin-item-price">${formatGold(item.price)}</div>
@@ -1648,6 +1648,7 @@ async function openAdminUserDetail(uid) {
             try {
               await db.collection('users').doc(uid).collection('items').doc(btn.dataset.itemId).delete();
               await updateAnyUserData(uid);
+              invalidateUsersCache();
               showToast('Item removido.', 'success');
               openAdminUserDetail(uid);
               loadAdminPanel();
@@ -1655,7 +1656,6 @@ async function openAdminUserDetail(uid) {
           }
         });
       });
-      // Fullscreen image on click
       itemsContainer.querySelectorAll('.skin-clickable-img').forEach(img => {
         img.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1680,6 +1680,7 @@ $('#admin-clear-inventory-btn').addEventListener('click', async () => {
       itemsSnap.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
       await updateAnyUserData(adminCurrentTargetUid);
+      invalidateUsersCache();
       showToast('Inventário limpo.', 'success');
       openAdminUserDetail(adminCurrentTargetUid);
       loadAdminPanel();
@@ -1690,7 +1691,6 @@ $('#admin-clear-inventory-btn').addEventListener('click', async () => {
 // ============================================
 // DELETE USER WITH REASON
 // ============================================
-
 let deleteTargetUid = null;
 
 function openDeleteReasonModal(uid) {
@@ -1710,7 +1710,6 @@ $('#btn-confirm-delete-user').addEventListener('click', async () => {
   }
   const user = adminAllUsers.find(u => u.uid === deleteTargetUid);
   try {
-    // Delete all user items (main + sub)
     const itemsSnap = await db.collection('users').doc(deleteTargetUid).collection('items').get();
     const subItemsSnap = await db.collection('users').doc(deleteTargetUid).collection('subItems').get();
     const batch = db.batch();
@@ -1718,7 +1717,6 @@ $('#btn-confirm-delete-user').addEventListener('click', async () => {
     subItemsSnap.forEach(doc => batch.delete(doc.ref));
     await batch.commit();
 
-    // Save deletion record with reason
     await db.collection('deletedUsers').add({
       uid: deleteTargetUid,
       displayName: user?.displayName || 'Unknown',
@@ -1728,13 +1726,13 @@ $('#btn-confirm-delete-user').addEventListener('click', async () => {
       deletedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Delete user document
     await db.collection('users').doc(deleteTargetUid).delete();
 
     showToast(`"${user?.displayName}" excluído. Motivo: ${reason}`, 'success');
     $('#delete-reason-modal').classList.add('hidden');
     $('#admin-user-modal').classList.add('hidden');
     deleteTargetUid = null;
+    invalidateUsersCache();
     loadAdminPanel();
   } catch (err) {
     showToast('Erro: ' + err.message, 'error');
@@ -1756,7 +1754,6 @@ $('#admin-search').addEventListener('input', (e) => {
 // ============================================
 // RAFFLE / SORTEIO
 // ============================================
-
 let raffleParticipants = [];
 let selectedParticipants = [];
 let isSpinning = false;
@@ -1764,7 +1761,6 @@ let isSpinning = false;
 async function loadRaffle() {
   if (!currentUser) return;
 
-  // Show admin controls only for admins
   const adminControls = $('#raffle-admin-controls');
   if (isAdmin()) {
     adminControls.style.display = '';
@@ -1813,7 +1809,6 @@ function renderParticipantsList(filter = '') {
     </div>
   `).join('');
 
-  // Attach click handlers
   list.querySelectorAll('.participant-item').forEach(item => {
     item.addEventListener('click', () => {
       const uid = item.dataset.uid;
@@ -1839,12 +1834,10 @@ function updateSpinButton() {
   spinBtn.disabled = selectedParticipants.length < 2 || prize <= 0 || isSpinning;
 }
 
-// Search participants
 $('#participants-search').addEventListener('input', (e) => {
   renderParticipantsList(e.target.value);
 });
 
-// Select all
 $('#select-all-participants').addEventListener('click', () => {
   if (selectedParticipants.length === raffleParticipants.length) {
     selectedParticipants = [];
@@ -1856,7 +1849,6 @@ $('#select-all-participants').addEventListener('click', () => {
   updateSpinButton();
 });
 
-// Save raffle config (just validates, actual save happens on spin)
 $('#btn-save-raffle').addEventListener('click', async () => {
   const name = $('#raffle-name').value.trim();
   const prize = parseGold($('#raffle-prize').value);
@@ -1879,7 +1871,6 @@ $('#btn-save-raffle').addEventListener('click', async () => {
   updateRaffleInfo();
 });
 
-// Update prize display
 $('#raffle-prize').addEventListener('input', () => {
   const prize = parseGold($('#raffle-prize').value);
   $('#raffle-prize-display').textContent = formatGold(prize);
@@ -1892,7 +1883,6 @@ function updateRaffleInfo() {
   $('#raffle-participants-count').textContent = selectedParticipants.length;
 }
 
-// Render roulette wheel
 function renderRoulette() {
   const wheel = $('#roulette-wheel');
   
@@ -1925,7 +1915,6 @@ function renderRoulette() {
   wheel.innerHTML = html;
 }
 
-// Spin roulette
 $('#btn-spin-raffle').addEventListener('click', async () => {
   if (selectedParticipants.length < 2 || isSpinning) return;
 
@@ -1945,40 +1934,30 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
   $('#btn-spin-raffle').disabled = true;
   $('#raffle-winner').style.display = 'none';
 
-  // Random winner
   const winnerIndex = Math.floor(Math.random() * selectedParticipants.length);
   const winnerUid = selectedParticipants[winnerIndex];
   const winner = raffleParticipants.find(p => p.uid === winnerUid);
 
-  // Calculate rotation
   const segmentAngle = 360 / selectedParticipants.length;
   const targetAngle = 360 - (segmentAngle * winnerIndex + segmentAngle / 2);
-  const spins = 5 + Math.floor(Math.random() * 3); // 5-7 full spins
+  const spins = 5 + Math.floor(Math.random() * 3);
   const finalRotation = spins * 360 + targetAngle;
 
   const wheel = $('#roulette-wheel');
   
-  // Remove transition temporarily to reset position instantly
   wheel.style.transition = 'none';
   wheel.style.transform = 'rotate(0deg)';
-  
-  // Force reflow
   wheel.offsetHeight;
-  
-  // Add transition and spin
   wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
   wheel.style.transform = `rotate(${finalRotation}deg)`;
 
-  // Wait for animation (4 seconds)
   setTimeout(async () => {
     isSpinning = false;
     
-    // Show winner
     $('#winner-name').textContent = winner?.displayName || 'Player';
     $('#winner-prize').textContent = formatGold(prize);
     $('#raffle-winner').style.display = '';
 
-    // Save result to Firestore
     try {
       await db.collection('raffles').add({
         name,
@@ -1993,31 +1972,20 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
       showToast(`Parabéns ${winner?.displayName || 'Player'}!`, 'success');
       await loadRaffleHistory();
 
-      // Scroll to history section
       const historyEl = $('#raffle-history');
       if (historyEl) {
         historyEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      // Reset roulette after 5 seconds
       setTimeout(() => {
-        // Hide winner display
         $('#raffle-winner').style.display = 'none';
-        
-        // Reset wheel without animation
         wheel.style.transition = 'none';
         wheel.style.transform = 'rotate(0deg)';
-        
-        // Clear selections
         selectedParticipants = [];
         renderParticipantsList($('#participants-search').value || '');
         updateSelectedCount();
         updateSpinButton();
-        
-        // Clear roulette display
         renderRoulette();
-        
-        // Scroll back to top of raffle section
         const raffleView = $('#view-raffle');
         if (raffleView) {
           raffleView.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2031,7 +1999,6 @@ $('#btn-spin-raffle').addEventListener('click', async () => {
   }, 4000);
 });
 
-// Load raffle history
 async function loadRaffleHistory() {
   const historyContainer = $('#raffle-history');
   
@@ -2080,7 +2047,6 @@ async function loadRaffleHistory() {
 // ============================================
 // UTILITIES
 // ============================================
-
 function formatGold(value) {
   const num = Number(value) || 0;
   return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'G';
@@ -2090,13 +2056,11 @@ function parseGold(value) {
   if (!value) return 0;
   let str = String(value).trim();
   if (!str) return 0;
-  // Remove dots (thousands separator) then replace comma with dot (decimal)
   str = str.replace(/\./g, '').replace(',', '.');
   const num = parseFloat(str);
   return isNaN(num) ? 0 : num;
 }
 
-// Allow digits, dots and commas on price inputs
 ['#item-price', '#edit-item-price', '#sell-item-price', '#raffle-prize'].forEach(sel => {
   const el = $(sel);
   if (el) {
