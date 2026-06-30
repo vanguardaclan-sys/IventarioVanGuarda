@@ -58,6 +58,10 @@
 
         <form id="register-form" class="auth-form">
           <div class="form-group">
+            <label>Nome Verdadeiro</label>
+            <input type="text" id="register-realname" placeholder="Seu nome completo" required minlength="3" maxlength="50">
+          </div>
+          <div class="form-group">
             <label>Nome de Exibição (Nickname)</label>
             <input type="text" id="register-name" placeholder="Seu nickname" required minlength="3" maxlength="20">
           </div>
@@ -426,6 +430,10 @@
             <h3 class="settings-card-title">INFORMAÇÕES DO PERFIL</h3>
             <form id="settings-profile-form">
               <div class="form-group">
+                <label>Nome Verdadeiro</label>
+                <input type="text" id="settings-realname" placeholder="Seu nome completo" required minlength="3" maxlength="50">
+              </div>
+              <div class="form-group">
                 <label>Nickname (aparece para todos)</label>
                 <input type="text" id="settings-nickname" placeholder="Seu nickname" required minlength="3" maxlength="20">
               </div>
@@ -694,6 +702,91 @@
           CONFIRMAR EXCLUSÃO
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- PENDING USER APPROVAL MODAL -->
+  <div id="pending-approval-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content pending-approval-modal">
+      <button class="modal-close">&times;</button>
+      <h3 class="modal-title">APROVAR CADASTRO PENDENTE</h3>
+      <div class="pending-approval-body">
+        <p class="pending-approval-subtitle">Revise as informações do usuário antes de aprovar:</p>
+        <div class="pending-approval-details">
+          <div class="pending-approval-field">
+            <span class="pending-approval-label">Nome Verdadeiro</span>
+            <span class="pending-approval-value" id="pending-realname">—</span>
+          </div>
+          <div class="pending-approval-field">
+            <span class="pending-approval-label">Nome de Exibição</span>
+            <span class="pending-approval-value" id="pending-display-name">—</span>
+          </div>
+          <div class="pending-approval-field">
+            <span class="pending-approval-label">Email</span>
+            <span class="pending-approval-value" id="pending-email">—</span>
+          </div>
+          <div class="pending-approval-field">
+            <span class="pending-approval-label">Telefone</span>
+            <span class="pending-approval-value" id="pending-phone">—</span>
+          </div>
+          <div class="pending-approval-field">
+            <span class="pending-approval-label">ID do Jogo</span>
+            <span class="pending-approval-value" id="pending-gameid">—</span>
+          </div>
+          <div class="pending-approval-field">
+            <span class="pending-approval-label">Data do Cadastro</span>
+            <span class="pending-approval-value" id="pending-date">—</span>
+          </div>
+        </div>
+        <div class="pending-approval-actions">
+          <button type="button" class="btn btn-approve" id="btn-confirm-approve-user">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+            APROVAR COMO MEMBRO
+          </button>
+          <button type="button" class="btn btn-approve-admin" id="btn-confirm-approve-admin">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            APROVAR COMO ADMIN
+          </button>
+          <button type="button" class="btn btn-reject" id="btn-confirm-reject-user">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            REJEITAR
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN EDIT USER MODAL -->
+  <div id="admin-edit-user-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content admin-edit-user-modal">
+      <button class="modal-close">&times;</button>
+      <h3 class="modal-title">EDITAR CADASTRO DO USUÁRIO</h3>
+      <form id="admin-edit-user-form">
+        <div class="form-group">
+          <label>Nome Verdadeiro</label>
+          <input type="text" id="admin-edit-realname" placeholder="Nome completo do usuário" required minlength="3" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label>Nome de Exibição (Nickname)</label>
+          <input type="text" id="admin-edit-displayname" placeholder="Nickname do usuário" required minlength="3" maxlength="20">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="admin-edit-email" placeholder="email@exemplo.com" required>
+        </div>
+        <div class="form-group">
+          <label>Telefone</label>
+          <input type="tel" id="admin-edit-phone" placeholder="(11) 99999-9999" required>
+        </div>
+        <div class="form-group">
+          <label>ID do Jogo (Standoff 2)</label>
+          <input type="text" id="admin-edit-gameid" placeholder="ID do Standoff 2" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">SALVAR ALTERAÇÕES</button>
+        <div id="admin-edit-user-msg" class="form-msg"></div>
+      </form>
     </div>
   </div>
 
