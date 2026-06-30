@@ -96,6 +96,7 @@ $('#login-form').addEventListener('submit', async (e) => {
 
 $('#register-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const realName = $('#register-realname').value.trim();
   const name = $('#register-name').value.trim();
   const email = $('#register-email').value.trim();
   const phone = $('#register-phone').value.trim();
@@ -114,6 +115,7 @@ $('#register-form').addEventListener('submit', async (e) => {
     const cred = await auth.createUserWithEmailAndPassword(email, password);
     await cred.user.updateProfile({ displayName: name });
     await db.collection('users').doc(cred.user.uid).set({
+      realName: realName,
       displayName: name,
       email: email,
       phone: phone,
@@ -296,6 +298,7 @@ $$('.inventory-tab').forEach(tab => {
 // ============================================
 function loadSettings() {
   if (!currentUser || !currentUserData) return;
+  $('#settings-realname').value = currentUserData.realName || '';
   $('#settings-nickname').value = currentUserData.displayName || '';
   $('#settings-email').value = currentUserData.email || '';
   $('#settings-phone').value = currentUserData.phone || '';
@@ -386,6 +389,7 @@ $('#btn-remove-photo').addEventListener('click', async () => {
 $('#settings-profile-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const msgEl = $('#settings-profile-msg');
+  const realName = $('#settings-realname').value.trim();
   const name = $('#settings-nickname').value.trim();
   const email = $('#settings-email').value.trim();
   const phone = $('#settings-phone').value.trim();
@@ -399,12 +403,14 @@ $('#settings-profile-form').addEventListener('submit', async (e) => {
       await currentUser.updateEmail(email);
     }
     await db.collection('users').doc(currentUser.uid).update({
+      realName: realName,
       displayName: name,
       email: email,
       phone: phone,
       gameId: gameId
     });
 
+    currentUserData.realName = realName;
     currentUserData.displayName = name;
     currentUserData.email = email;
     currentUserData.phone = phone;
@@ -1392,6 +1398,7 @@ async function loadAdminPanel() {
         const subValue = userData.subValue || 0;
         usersWithTotals.push({
           uid: doc.id, displayName: userData.displayName || 'Player',
+          realName: userData.realName || '',
           email: userData.email || '', gameId: userData.gameId || '', phone: userData.phone || '',
           itemCount: userData.itemCount || 0, totalValue,
           subItemCount: userData.subItemCount || 0, subValue,
@@ -1420,6 +1427,7 @@ async function loadAdminPanel() {
       
       return {
         uid: doc.id, displayName: userData.displayName || 'Player',
+        realName: userData.realName || '',
         email: userData.email || '', gameId: userData.gameId || '', phone: userData.phone || '',
         itemCount: counts.itemCount, totalValue: counts.totalValue,
         subItemCount: counts.subItemCount, subValue: counts.subValue,
@@ -1480,30 +1488,26 @@ function renderAdminUsers(users) {
           <span class="status-badge ${statusClass}">${statusText}</span>
         </div>
         <div class="admin-user-email">${user.email} ${user.gameId ? '• ID: ' + user.gameId : ''}</div>
-        <div class="admin-user-email">${user.phone || 'Sem telefone'}</div>
+        <div class="admin-user-email">${user.phone || 'Sem telefone'}${user.realName ? ' • ' + user.realName : ''}</div>
       </div>
       <div class="admin-user-stats">
         <div class="admin-user-stat"><div class="admin-user-stat-value">${user.itemCount}</div><div class="admin-user-stat-label">ITENS</div></div>
         <div class="admin-user-stat"><div class="admin-user-stat-value">${formatGold(user.totalValue)}</div><div class="admin-user-stat-label">VALOR</div></div>
       </div>
       <div class="admin-user-actions">
-        ${user.status === 'pending' && !isSelf ? `
-          <button class="btn-approve" data-action="approve-user" data-uid="${user.uid}" title="Aprovar como membro">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>
-            MEMBRO
-          </button>
-          <button class="btn-approve-admin" data-action="approve-admin" data-uid="${user.uid}" title="Aprovar como admin">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            ADMIN
-          </button>
-          <button class="btn-reject" data-action="reject-user" data-uid="${user.uid}" title="Rejeitar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        ${user.status === 'pending' ? `
+          <button class="btn-approve" data-action="review-user" data-uid="${user.uid}" title="Revisar cadastro">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            REVISAR
           </button>
         ` : ''}
         <button class="btn-admin-action" data-action="view" data-uid="${user.uid}" title="Ver inventário">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
         ${!isSelf && user.status === 'approved' ? `
+        <button class="btn-admin-action" data-action="edit-user" data-uid="${user.uid}" title="Editar cadastro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
         <button class="btn-admin-action danger" data-action="delete-user" data-uid="${user.uid}" title="Excluir">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
@@ -1512,41 +1516,17 @@ function renderAdminUsers(users) {
     </div>`;
   }).join('');
 
-  list.querySelectorAll('[data-action="approve-user"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+  list.querySelectorAll('[data-action="review-user"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      try {
-        await db.collection('users').doc(btn.dataset.uid).update({ status: 'approved', role: 'user' });
-        showToast('Usuário aprovado como membro.', 'success');
-        invalidateUsersCache();
-        loadAdminPanel();
-      } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+      openPendingApprovalModal(btn.dataset.uid);
     });
   });
 
-  list.querySelectorAll('[data-action="approve-admin"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+  list.querySelectorAll('[data-action="edit-user"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      try {
-        await db.collection('users').doc(btn.dataset.uid).update({ status: 'approved', role: 'admin' });
-        showToast('Usuário aprovado como ADMIN.', 'success');
-        invalidateUsersCache();
-        loadAdminPanel();
-      } catch (err) { showToast('Erro: ' + err.message, 'error'); }
-    });
-  });
-
-  list.querySelectorAll('[data-action="reject-user"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (confirm('Rejeitar este usuário?')) {
-        try {
-          await db.collection('users').doc(btn.dataset.uid).update({ status: 'rejected' });
-          showToast('Usuário rejeitado.', 'success');
-          invalidateUsersCache();
-          loadAdminPanel();
-        } catch (err) { showToast('Erro: ' + err.message, 'error'); }
-      }
+      openAdminEditUserModal(btn.dataset.uid);
     });
   });
 
@@ -1596,6 +1576,10 @@ async function openAdminUserDetail(uid) {
       <div class="admin-detail-account-info">
         <h4>INFORMAÇÕES DA CONTA</h4>
         <div class="admin-account-info-grid">
+          <div class="admin-account-info-item">
+            <span class="admin-account-info-label">Nome Verdadeiro</span>
+            <span class="admin-account-info-value">${userData.realName || '—'}</span>
+          </div>
           <div class="admin-account-info-item">
             <span class="admin-account-info-label">Email</span>
             <span class="admin-account-info-value">${userData.email || '—'}</span>
@@ -1686,6 +1670,148 @@ $('#admin-clear-inventory-btn').addEventListener('click', async () => {
       loadAdminPanel();
     } catch (err) { showToast('Erro.', 'error'); }
   }
+});
+
+// ============================================
+// PENDING APPROVAL MODAL
+// ============================================
+let pendingApprovalUid = null;
+
+async function openPendingApprovalModal(uid) {
+  if (!isAdmin()) return;
+  pendingApprovalUid = uid;
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+    const userData = userDoc.data();
+    const createdDate = userData.createdAt?.toDate();
+
+    $('#pending-realname').textContent = userData.realName || '—';
+    $('#pending-display-name').textContent = userData.displayName || '—';
+    $('#pending-email').textContent = userData.email || '—';
+    $('#pending-phone').textContent = userData.phone || '—';
+    $('#pending-gameid').textContent = userData.gameId || '—';
+    $('#pending-date').textContent = createdDate ? createdDate.toLocaleDateString('pt-BR') : '—';
+
+    $('#pending-approval-modal').classList.remove('hidden');
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao carregar dados do usuário.', 'error');
+  }
+}
+
+$('#btn-confirm-approve-user').addEventListener('click', async () => {
+  if (!pendingApprovalUid || !isAdmin()) return;
+  try {
+    await db.collection('users').doc(pendingApprovalUid).update({ status: 'approved', role: 'user' });
+    showToast('Usuário aprovado como membro.', 'success');
+    $('#pending-approval-modal').classList.add('hidden');
+    invalidateUsersCache();
+    loadAdminPanel();
+  } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+});
+
+$('#btn-confirm-approve-admin').addEventListener('click', async () => {
+  if (!pendingApprovalUid || !isAdmin()) return;
+  try {
+    await db.collection('users').doc(pendingApprovalUid).update({ status: 'approved', role: 'admin' });
+    showToast('Usuário aprovado como ADMIN.', 'success');
+    $('#pending-approval-modal').classList.add('hidden');
+    invalidateUsersCache();
+    loadAdminPanel();
+  } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+});
+
+$('#btn-confirm-reject-user').addEventListener('click', async () => {
+  if (!pendingApprovalUid || !isAdmin()) return;
+  if (confirm('Tem certeza que deseja rejeitar este usuário?')) {
+    try {
+      await db.collection('users').doc(pendingApprovalUid).update({ status: 'rejected' });
+      showToast('Usuário rejeitado.', 'success');
+      $('#pending-approval-modal').classList.add('hidden');
+      invalidateUsersCache();
+      loadAdminPanel();
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+  }
+});
+
+$('#pending-approval-modal').querySelector('.modal-close').addEventListener('click', () => {
+  $('#pending-approval-modal').classList.add('hidden');
+});
+$('#pending-approval-modal').querySelector('.modal-overlay').addEventListener('click', () => {
+  $('#pending-approval-modal').classList.add('hidden');
+});
+
+// ============================================
+// ADMIN EDIT USER
+// ============================================
+let adminEditTargetUid = null;
+
+async function openAdminEditUserModal(uid) {
+  if (!isAdmin()) return;
+  adminEditTargetUid = uid;
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+    const userData = userDoc.data();
+
+    $('#admin-edit-realname').value = userData.realName || '';
+    $('#admin-edit-displayname').value = userData.displayName || '';
+    $('#admin-edit-email').value = userData.email || '';
+    $('#admin-edit-phone').value = userData.phone || '';
+    $('#admin-edit-gameid').value = userData.gameId || '';
+    $('#admin-edit-user-msg').className = 'form-msg';
+    $('#admin-edit-user-msg').textContent = '';
+
+    $('#admin-edit-user-modal').classList.remove('hidden');
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao carregar dados do usuário.', 'error');
+  }
+}
+
+$('#admin-edit-user-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!adminEditTargetUid || !isAdmin()) return;
+  const msgEl = $('#admin-edit-user-msg');
+  const realName = $('#admin-edit-realname').value.trim();
+  const displayName = $('#admin-edit-displayname').value.trim();
+  const email = $('#admin-edit-email').value.trim();
+  const phone = $('#admin-edit-phone').value.trim();
+  const gameId = $('#admin-edit-gameid').value.trim();
+
+  try {
+    await db.collection('users').doc(adminEditTargetUid).update({
+      realName: realName,
+      displayName: displayName,
+      email: email,
+      phone: phone,
+      gameId: gameId
+    });
+
+    // Update Firebase Auth email if changed
+    const userDoc = await db.collection('users').doc(adminEditTargetUid).get();
+    const currentEmail = userDoc.data().email;
+    // Note: Changing Firebase Auth email requires re-authentication, so we only update Firestore
+    // The email in Firestore is updated for display/contact purposes
+
+    msgEl.className = 'form-msg success';
+    msgEl.textContent = 'Cadastro atualizado com sucesso!';
+    showToast('Cadastro do usuário atualizado!', 'success');
+    invalidateUsersCache();
+    setTimeout(() => {
+      $('#admin-edit-user-modal').classList.add('hidden');
+      loadAdminPanel();
+    }, 1500);
+  } catch (err) {
+    msgEl.className = 'form-msg error';
+    msgEl.textContent = 'Erro: ' + err.message;
+  }
+});
+
+$('#admin-edit-user-modal').querySelector('.modal-close').addEventListener('click', () => {
+  $('#admin-edit-user-modal').classList.add('hidden');
+});
+$('#admin-edit-user-modal').querySelector('.modal-overlay').addEventListener('click', () => {
+  $('#admin-edit-user-modal').classList.add('hidden');
 });
 
 // ============================================
