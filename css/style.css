@@ -1932,3 +1932,93 @@ body {
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
+
+/* ============================================
+   PENDING APPROVAL MODAL
+   ============================================ */
+.pending-approval-modal {
+  max-width: 500px;
+}
+
+.pending-approval-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pending-approval-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.pending-approval-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pending-approval-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.pending-approval-label {
+  font-family: var(--font-condensed);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.pending-approval-value {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.pending-approval-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+}
+
+.pending-approval-actions .btn {
+  flex: 1;
+  min-width: 120px;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .pending-approval-actions {
+    flex-direction: column;
+  }
+  
+  .pending-approval-actions .btn {
+    min-width: unset;
+  }
+}
+
+/* ============================================
+   ADMIN EDIT USER MODAL
+   ============================================ */
+.admin-edit-user-modal {
+  max-width: 500px;
+}
+
+.admin-edit-user-modal form {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
